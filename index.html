@@ -846,10 +846,6 @@ $("bury-confirm").addEventListener("click",async()=>{
   }catch(e){ toast(e.message) }
 });
 
-/* ---------- wallet picker ---------- */
-#wallet-list{display:flex;flex-direction:column;gap:12px;margin:6px 0 18px}
-.wallet-opt{display:flex;align-items:center;gap:12px;justify-content:flex-start;text-align:left;text-decoration:none;width:100%}
-.wallet-ico{width:22px;height:22px;image-rendering:auto;border-radius:4px}
 /* ---------- toast ---------- */
 let toastTimer=null;
 function toast(msg){
