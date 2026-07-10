@@ -3,8 +3,8 @@ import nacl from "npm:tweetnacl@1.0.3";
 import bs58 from "npm:bs58@5.0.0";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-export const RPC_URL = Deno.env.get("RPC_URL")!;              // Helius endpoint
-export const RIP_MINT = Deno.env.get("RIP_MINT")!;            // set after launch
+export const RPC_URL = Deno.env.get("RPC_URL")!; // set as function secret              // Helius endpoint
+export const RIP_MINT = Deno.env.get("RIP_MINT") ?? ""; // empty = pre-launch mode            // set after launch
 export const TOKEN_DECIMALS = Number(Deno.env.get("TOKEN_DECIMALS") ?? "6");
 export const HOLD_THRESHOLD = Number(Deno.env.get("HOLD_THRESHOLD") ?? "1000");
 export const BURN_AMOUNT = Number(Deno.env.get("BURN_AMOUNT") ?? "10000");
