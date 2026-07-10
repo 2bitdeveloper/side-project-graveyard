@@ -131,33 +131,35 @@ main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px}
 .mourned-card span{color:var(--mist);font-size:12px}
 /* ---------- cemetery ---------- */
 #cemetery{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));
-  gap:34px 18px;padding:34px 0 30px;align-items:end;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+  gap:64px 40px;padding:34px 0 30px;align-items:end;
 }
 .grave{
   position:relative;text-align:center;cursor:pointer;border:none;background:none;color:inherit;
   padding:0 0 14px;transition:transform .12s ease;
 }
 .grave:hover{transform:translateY(-5px)}
-.grave canvas{image-rendering:pixelated;width:120px;height:150px;display:block;margin:0 auto}
+.grave canvas{image-rendering:pixelated;width:160px;height:200px;display:block;margin:0 auto}
 .grave .plot{
   position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
-  width:132px;height:12px;background:var(--ground-deep);
+  width:176px;height:12px;background:var(--ground-deep);
   box-shadow:inset 0 3px 0 rgba(0,0,0,.5);
 }
 .grave .gname{
-  position:absolute;top:52px;left:50%;transform:translateX(-50%);
-  width:96px;font-size:10px;font-weight:700;line-height:1.35;color:#2c3242;
+  position:absolute;top:68px;left:50%;transform:translateX(-50%);
+  width:120px;font-size:13px;font-weight:700;line-height:1.35;color:#161b26;
+  text-shadow:0 1px 0 rgba(255,255,255,.35);
   overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
   word-break:break-word;pointer-events:none;
 }
 .grave .gyears{
-  position:absolute;top:82px;left:50%;transform:translateX(-50%);
-  font-size:9px;color:#3b4356;pointer-events:none;
+  position:absolute;top:108px;left:50%;transform:translateX(-50%);
+  font-size:11px;font-weight:500;color:#222937;
+  text-shadow:0 1px 0 rgba(255,255,255,.25);pointer-events:none;
 }
 .grave.is-risen .gname,.grave.is-risen .gyears{color:#0d3b2a}
 .grave .candle-flame{
-  position:absolute;bottom:16px;left:calc(50% + 34px);width:6px;height:8px;
+  position:absolute;bottom:16px;left:calc(50% + 48px);width:7px;height:10px;
   background:var(--candle);box-shadow:0 -3px 0 var(--candle-hot);
   animation:flick .7s steps(2) infinite;
 }
@@ -230,11 +232,12 @@ footer .disclaimer{max-width:560px;margin:14px auto 0;color:var(--stone-dim);lin
 #wallet-bar{position:fixed;top:14px;right:14px;z-index:40}
 #wallet-btn{font-size:12px;padding:9px 14px}
 @media(max-width:560px){
-  #cemetery{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:26px 8px}
-  .grave canvas{width:104px;height:130px}
-  .grave .gname{width:84px;top:44px}
-  .grave .gyears{top:72px}
-  .grave .plot{width:112px}
+  #cemetery{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:44px 20px}
+  .grave canvas{width:132px;height:165px}
+  .grave .gname{width:100px;top:56px;font-size:11px}
+  .grave .gyears{top:88px;font-size:10px}
+  .grave .plot{width:146px}
+  .grave .candle-flame{left:calc(50% + 40px)}
   #moon{right:6vw;width:52px;height:52px}
 }
 </style>
@@ -249,7 +252,7 @@ footer .disclaimer{max-width:560px;margin:14px auto 0;color:var(--stone-dim);lin
 
 <main>
   <section id="hero">
-    <span class="ticker-chip">$RIP · CASHBACK COIN</span>
+    <span class="ticker-chip">$RIP · MEMENTO MORI</span>
     <h1>THE SIDE PROJECT<br><span class="rip">GRAVEYARD</span></h1>
     <p class="oneliner">In loving memory of every project you swore you'd finish.</p>
     <div class="hero-actions">
@@ -350,7 +353,7 @@ footer .disclaimer{max-width:560px;margin:14px auto 0;color:var(--stone-dim);lin
 <footer>
   <div>OFFICIAL CONTRACT ADDRESS</div>
   <div class="ca" id="ca">— to be engraved at launch —</div>
-  <div><span class="cashback">Cashback Coin:</span> 100% of creator fees flow back to traders. Locked at launch, forever.</div>
+  <div><span class="cashback">Creator fees</span> pay the gravedigger — they fund upkeep, new rituals, and the keeper's wage. Every flow is on-chain, in the open.</div>
   <p class="disclaimer">$RIP is a meme token with no promise of profit, utility beyond ritual, or life after death.
   Nothing here is financial advice. Most side projects die. Most tokens do too. Mourn responsibly.</p>
 </footer>
@@ -440,17 +443,17 @@ function drawTombstone(cv,grave){
   const solid=[];
   function fillCols(y,x0,x1){for(let x=x0;x<=x1;x++){solid.push([x,y])}}
   if(shape===0){ // rounded slab
-    fillCols(3,7,12);
-    fillCols(4,5,14); fillCols(5,4,15);
-    for(let y=6;y<=20;y++)fillCols(y,3,16);
+    fillCols(3,6,13);
+    fillCols(4,4,15); fillCols(5,3,16);
+    for(let y=6;y<=20;y++)fillCols(y,2,17);
   }else if(shape===1){ // slab with cross
     fillCols(1,9,10);fillCols(2,9,10);
     fillCols(3,7,12);fillCols(4,9,10);fillCols(5,9,10);
-    fillCols(6,5,14);
-    for(let y=7;y<=20;y++)fillCols(y,4,15);
+    fillCols(6,4,15);
+    for(let y=7;y<=20;y++)fillCols(y,3,16);
   }else{ // obelisk
-    fillCols(2,9,10);fillCols(3,8,11);fillCols(4,7,12);fillCols(5,6,13);
-    for(let y=6;y<=20;y++)fillCols(y,5,14);
+    fillCols(2,9,10);fillCols(3,8,11);fillCols(4,6,13);fillCols(5,5,14);
+    for(let y=6;y<=20;y++)fillCols(y,3,16);
   }
   for(const[x,y]of solid)px(x,y,base);
   // shading: left highlight, right shadow
