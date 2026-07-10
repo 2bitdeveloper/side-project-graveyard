@@ -1,7 +1,7 @@
 // POST /functions/v1/bury
 // body: { wallet, timestamp, signature, grave: { name, epitaph, cause, born, died } }
 import {
-  admin, json, CORS, verifyWallet, ripBalance, moderationFlag, HOLD_THRESHOLD,
+  admin, json, CORS, verifyWallet, ripBalance, moderationFlag, HOLD_THRESHOLD, RIP_MINT,
 } from "../_shared/helpers.ts";
 
 const CAUSES = new Set([
@@ -27,10 +27,13 @@ Deno.serve(async (req) => {
     const flag = moderationFlag(name) ?? moderationFlag(epitaph);
     if (flag) return json({ error: flag }, 400);
 
-    // 3. hold-to-bury gate (same pattern as the $2BA check)
-    const balance = await ripBalance(wallet);
-    if (balance < HOLD_THRESHOLD) {
-      return json({ error: `Burial rites require holding ${HOLD_THRESHOLD.toLocaleString()} $RIP.` }, 403);
+    // 3. hold-to-bury gate. Pre-launch (no mint set): burials are free.
+    // Once RIP_MINT is set, the gate switches on automatically.
+    if (RIP_MINT) {
+      const balance = await ripBalance(wallet);
+      if (balance < HOLD_THRESHOLD) {
+        return json({ error: `Burial rites require holding ${HOLD_THRESHOLD.toLocaleString()} $RIP.` }, 403);
+      }
     }
 
     // 4. insert (unique index rejects duplicate burials per wallet+name)
