@@ -209,6 +209,10 @@ main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px}
 }
 .detail-meta{font-size:12px;color:var(--mist);line-height:2}
 .detail-meta b{color:var(--moonlight)}
+/* ---------- wallet picker ---------- */
+#wallet-list{display:flex;flex-direction:column;gap:12px;margin:6px 0 18px}
+.wallet-opt{display:flex;align-items:center;gap:12px;justify-content:flex-start;text-align:left;text-decoration:none;width:100%}
+.wallet-ico{width:22px;height:22px;image-rendering:auto;border-radius:4px}
 /* ---------- toast ---------- */
 #toast{
   position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(80px);
@@ -282,6 +286,16 @@ footer .disclaimer{max-width:560px;margin:14px auto 0;color:var(--stone-dim);lin
     <p class="cemetery-note">somewhere out there, another repo just went quiet…</p>
   </section>
 </main>
+
+<!-- wallet picker modal -->
+<div class="overlay" id="wallet-overlay" role="dialog" aria-modal="true" aria-labelledby="wallet-title">
+  <div class="modal">
+    <h3 id="wallet-title">CHOOSE YOUR VESSEL</h3>
+    <div id="wallet-list"></div>
+    <div class="modal-actions"><button class="btn" data-close>never mind</button></div>
+    <p class="hint" id="wallet-hint"></p>
+  </div>
+</div>
 
 <!-- burial modal -->
 <div class="overlay" id="bury-overlay" role="dialog" aria-modal="true" aria-labelledby="bury-title">
@@ -390,7 +404,7 @@ function b58encode(bytes){
 }
 
 /* ---------- state ---------- */
-const state={ wallet:null, provider:null, graves:[], stats:null };
+const state={ wallet:null, adapter:null, graves:[], stats:null };
 let gravePage=0, dbExhausted=false, loadingGraves=false;
 
 /* ---------- Supabase REST ---------- */
@@ -581,37 +595,128 @@ async function loadMoreGraves(){
   loadingGraves=false;
 }
 
-/* ---------- wallet ---------- */
+/* ---------- wallet: Wallet Standard discovery + legacy fallback ---------- */
 function shortAddr(a){return a.slice(0,4)+"…"+a.slice(-4)}
-function getProvider(){
-  if(window.phantom?.solana?.isPhantom)return window.phantom.solana;
-  if(window.solflare?.isSolflare)return window.solflare;
-  if(window.solana)return window.solana;
-  return null;
+const discovered=new Map(); // name -> adapter
+
+function registerStandardWallet(w){
+  try{
+    const f=w.features||{};
+    if(!f["standard:connect"]||!f["solana:signMessage"])return;
+    if(!(w.chains||[]).some(c=>String(c).startsWith("solana:")))return;
+    discovered.set(w.name,{
+      name:w.name, icon:w.icon||null, _account:null,
+      async connect(){
+        const r=await f["standard:connect"].connect();
+        const acc=(r.accounts||[]).find(a=>(a.chains||[]).some(c=>String(c).startsWith("solana:")))||(r.accounts||[])[0];
+        if(!acc)throw new Error("No account authorized.");
+        this._account=acc;
+        return acc.address;
+      },
+      async signMessage(bytes){
+        const [r]=await f["solana:signMessage"].signMessage({account:this._account,message:bytes});
+        return r.signature;
+      },
+      async signAndSendTransaction(tx){
+        const feat=f["solana:signAndSendTransaction"];
+        if(!feat)throw new Error(this.name+" can't send transactions from this site.");
+        const serialized=new Uint8Array(tx.serialize({requireAllSignatures:false,verifySignatures:false}));
+        const [r]=await feat.signAndSendTransaction({account:this._account,transaction:serialized,chain:"solana:mainnet"});
+        return typeof r.signature==="string"?r.signature:b58encode(r.signature);
+      },
+    });
+  }catch(e){console.warn("wallet registration skipped:",w?.name,e)}
 }
-async function connectWallet(){
-  const provider=getProvider();
-  if(!provider){
-    toast("No Solana wallet found — install Phantom or Solflare, then reload.");
-    throw new Error("no wallet");
+// Wallet Standard handshake: catch wallets registering now and later
+const wsApi={register:(...ws)=>{ws.forEach(registerStandardWallet);return()=>{}}};
+window.addEventListener("wallet-standard:register-wallet",e=>{try{e.detail(wsApi)}catch{}});
+try{window.dispatchEvent(new CustomEvent("wallet-standard:app-ready",{detail:wsApi}))}catch{}
+
+function legacyAdapter(name,provider){
+  return{ name, icon:null,
+    async connect(){ const r=await provider.connect(); const pk=r?.publicKey??provider.publicKey; return pk.toString(); },
+    async signMessage(bytes){ const r=await provider.signMessage(bytes,"utf8"); return r?.signature??r; },
+    async signAndSendTransaction(tx){ const {signature}=await provider.signAndSendTransaction(tx); return signature; },
+  };
+}
+function sweepLegacyWallets(){
+  const known=[
+    ["Phantom",window.phantom?.solana],
+    ["Solflare",window.solflare],
+    ["Backpack",window.backpack],
+    ["OKX Wallet",window.okxwallet?.solana],
+    ["Bitget Wallet",window.bitkeep?.solana||window.bitgetWallet?.solana],
+    ["Trust Wallet",window.trustwallet?.solana],
+    ["Coinbase Wallet",window.coinbaseSolana],
+  ];
+  for(const[name,p]of known){
+    if(!p)continue;
+    const first=name.split(" ")[0].toLowerCase();
+    const already=[...discovered.keys()].some(k=>k.toLowerCase().includes(first));
+    if(!already)discovered.set(name,legacyAdapter(name,p));
   }
-  const resp=await provider.connect();
-  const pk=resp?.publicKey??provider.publicKey;
-  state.provider=provider;
-  state.wallet=pk.toString();
-  $("wallet-btn").textContent="⛓ "+shortAddr(state.wallet);
-  updateHoldStatus();
-  toast("Wallet connected. Welcome to the graveyard.");
+  if(discovered.size===0&&window.solana)discovered.set("Solana Wallet",legacyAdapter("Solana Wallet",window.solana));
 }
-async function ensureWallet(){ if(!state.wallet)await connectWallet(); }
+
+const isMobile=/android|iphone|ipad|mobile/i.test(navigator.userAgent);
+function renderWalletPicker(){
+  sweepLegacyWallets();
+  const list=$("wallet-list");list.innerHTML="";
+  if(discovered.size===0){
+    const here=encodeURIComponent(location.href.split("#")[0]);
+    const ref=encodeURIComponent(location.origin);
+    if(isMobile){
+      $("wallet-hint").textContent="No wallet detected in this browser. Open the graveyard inside your wallet's built-in browser:";
+      list.innerHTML=
+        '<a class="btn wallet-opt" href="https://phantom.app/ul/browse/'+here+'?ref='+ref+'">👻 Open in Phantom</a>'+
+        '<a class="btn wallet-opt" href="https://solflare.com/ul/v1/browse/'+here+'?ref='+ref+'">🔆 Open in Solflare</a>'+
+        '<p class="hint" style="margin-top:10px">Using OKX, Bitget, or the pump.fun app? Open their in-app browser and visit this page — the wallet will appear here.</p>';
+    }else{
+      $("wallet-hint").textContent="No Solana wallet found in this browser. Install one, then reload:";
+      list.innerHTML=
+        '<a class="btn wallet-opt" href="https://phantom.com" target="_blank" rel="noopener">👻 Get Phantom</a>'+
+        '<a class="btn wallet-opt" href="https://solflare.com" target="_blank" rel="noopener">🔆 Get Solflare</a>';
+    }
+    return;
+  }
+  $("wallet-hint").textContent="Sign-ins are free — you only sign a message, never a transaction, to bury or mourn.";
+  for(const adapter of discovered.values()){
+    const b=document.createElement("button");
+    b.className="btn wallet-opt";
+    if(adapter.icon){
+      const img=document.createElement("img");img.src=adapter.icon;img.alt="";img.className="wallet-ico";
+      b.appendChild(img);
+    }
+    b.appendChild(document.createTextNode(adapter.name));
+    b.addEventListener("click",()=>connectWith(adapter));
+    list.appendChild(b);
+  }
+}
+async function connectWith(adapter){
+  try{
+    state.adapter=adapter;
+    state.wallet=await adapter.connect();
+    $("wallet-btn").textContent="⛓ "+shortAddr(state.wallet);
+    updateHoldStatus();
+    closeOverlays();
+    toast("Connected via "+adapter.name+". Welcome to the graveyard.");
+  }catch(e){ state.adapter=null;state.wallet=null;toast(e.message||"Connection refused.") }
+}
+function openWalletPicker(){renderWalletPicker();openOverlay("wallet-overlay")}
+async function ensureWallet(){
+  if(state.wallet)return;
+  sweepLegacyWallets();
+  if(discovered.size===1){await connectWith([...discovered.values()][0]);if(state.wallet)return}
+  openWalletPicker();
+  throw new Error("Choose a wallet, then try again.");
+}
 async function signedPayload(action){
   const timestamp=new Date().toISOString();
   const msg=`graveyard:${action}:${state.wallet}:${timestamp}`;
-  const res=await state.provider.signMessage(new TextEncoder().encode(msg),"utf8");
-  const sig=res?.signature??res;
+  const sig=await state.adapter.signMessage(new TextEncoder().encode(msg));
   return{ wallet:state.wallet, timestamp, signature:b58encode(sig) };
 }
-$("wallet-btn").addEventListener("click",()=>{ if(!state.wallet)connectWallet().catch(()=>{}) });
+$("wallet-btn").addEventListener("click",()=>{ if(!state.wallet)openWalletPicker() });
 
 /* ---------- modals ---------- */
 function openOverlay(id){$(id).classList.add("open")}
@@ -694,7 +799,7 @@ async function sendBurnTx(){
   const tx=new sw.Transaction().add(ix);
   tx.feePayer=owner;
   tx.recentBlockhash=(await conn.getLatestBlockhash()).blockhash;
-  const {signature}=await state.provider.signAndSendTransaction(tx);
+  const signature=await state.adapter.signAndSendTransaction(tx);
   for(let i=0;i<30;i++){
     const st=(await conn.getSignatureStatuses([signature])).value?.[0];
     if(st?.err)throw new Error("Burn transaction failed on-chain.");
@@ -741,6 +846,10 @@ $("bury-confirm").addEventListener("click",async()=>{
   }catch(e){ toast(e.message) }
 });
 
+/* ---------- wallet picker ---------- */
+#wallet-list{display:flex;flex-direction:column;gap:12px;margin:6px 0 18px}
+.wallet-opt{display:flex;align-items:center;gap:12px;justify-content:flex-start;text-align:left;text-decoration:none;width:100%}
+.wallet-ico{width:22px;height:22px;image-rendering:auto;border-radius:4px}
 /* ---------- toast ---------- */
 let toastTimer=null;
 function toast(msg){
