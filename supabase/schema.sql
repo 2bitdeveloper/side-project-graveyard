@@ -82,3 +82,8 @@ create policy "burns are public reading"   on public.burns   for select using (t
 
 -- grant the anon role read on the view
 grant select on public.graveyard_stats to anon, authenticated;
+
+-- ---------- security hardening (advisor fixes) ----------
+alter view public.graveyard_stats set (security_invoker = true);
+alter function public.bump_candle_count() set search_path = public, pg_temp;
+revoke execute on function public.bump_candle_count() from anon, authenticated, public;
