@@ -544,6 +544,8 @@ async function loadMourned(){
     });
   }catch(e){console.error("mourned load failed",e)}
 }
+let fillerBatches=0;
+const MAX_FILLER_BATCHES=12; // ~96 unmarked graves, then the fog takes over
 async function loadMoreGraves(){
   if(loadingGraves)return;
   loadingGraves=true;
@@ -553,12 +555,27 @@ async function loadMoreGraves(){
       rows.forEach(r=>addGrave(normalizeGrave(r)));
       if(rows.length<PAGE_SIZE)dbExhausted=true;
       gravePage++;
-    }else{
-      for(let i=0;i<8;i++)addGrave(makeFillerGrave());
+    }else if(fillerBatches<MAX_FILLER_BATCHES){
+      fillerBatches++;
+      for(let i=0;i<8;i++){
+        const g=makeFillerGrave();g.unmarked=true;
+        addGrave(g);
+        // fade toward the fog as the end approaches
+        if(fillerBatches>MAX_FILLER_BATCHES-4){
+          g._el.style.opacity=String(1-(fillerBatches-(MAX_FILLER_BATCHES-4))*0.18);
+        }
+      }
+      if(fillerBatches>=MAX_FILLER_BATCHES){
+        io.disconnect();
+        const fog=document.createElement("p");
+        fog.className="cemetery-note";
+        fog.textContent="…the rest lie beneath the fog. The graveyard goes on, but no one has walked further.";
+        cemeteryEl.after(fog);
+      }
     }
   }catch(e){
     console.error("grave load failed",e);
-    dbExhausted=true; // fall back to filler so the cemetery is never empty
+    dbExhausted=true;
     for(let i=0;i<8;i++)addGrave(makeFillerGrave());
   }
   loadingGraves=false;
