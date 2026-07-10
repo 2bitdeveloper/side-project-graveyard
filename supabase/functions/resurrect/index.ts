@@ -53,6 +53,10 @@ Deno.serve(async (req) => {
 
     const auth = verifyWallet("resurrect", wallet, timestamp, signature);
     if (!auth.ok) return json({ error: auth.err }, 401);
+
+    // pre-launch mode: no mint yet -> resurrections locked
+    if (!RIP_MINT) return json({ error: "Resurrections unlock at token launch." }, 503);
+
     if (!graveId || !burnTx) return json({ error: "Missing grave or burn transaction." }, 400);
 
     const db = admin();
