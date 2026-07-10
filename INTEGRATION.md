@@ -22,9 +22,11 @@ supabase functions deploy bury
 supabase functions deploy light-candle
 supabase functions deploy resurrect
 ```
-All three allow anonymous invocation (auth happens via wallet signature),
-so deploy with `--no-verify-jwt` or disable JWT verification per-function
-in the dashboard.
+Deployed with JWT verification ON. Real auth still happens via wallet
+signature; the JWT layer just requires the public anon key as a Bearer
+token, so every request must include BOTH headers:
+  apikey: SUPABASE_ANON_KEY
+  Authorization: Bearer SUPABASE_ANON_KEY
 
 ## 4. Client wiring (replaces the prototype stubs)
 
@@ -48,7 +50,11 @@ async function signedPayload(action: string, wallet: WalletContextState) {
 ```ts
 const res = await fetch(`${SUPABASE_URL}/functions/v1/bury`, {
   method: "POST",
-  headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
+  headers: {
+    "Content-Type": "application/json",
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  },
   body: JSON.stringify({
     ...(await signedPayload("bury", wallet)),
     grave: { name, epitaph, cause, born, died },
