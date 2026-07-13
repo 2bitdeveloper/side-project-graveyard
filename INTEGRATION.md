@@ -9,7 +9,7 @@ supabase db push   # if you manage migrations locally
 ## 2. Set edge function secrets
 ```bash
 supabase secrets set RPC_URL="https://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
-supabase secrets set RIP_MINT="PASTE_MINT_AFTER_LAUNCH"
+supabase secrets set TOKEN_MINT="PASTE_MINT_AFTER_LAUNCH"
 supabase secrets set TOKEN_DECIMALS="6"
 supabase secrets set HOLD_THRESHOLD="1000"
 supabase secrets set BURN_AMOUNT="10000"
@@ -71,9 +71,9 @@ body: JSON.stringify({ ...(await signedPayload("candle", wallet)), graveId })
 ```ts
 import { createBurnCheckedInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 
-const ata = getAssociatedTokenAddressSync(new PublicKey(RIP_MINT), wallet.publicKey!);
+const ata = getAssociatedTokenAddressSync(new PublicKey(TOKEN_MINT), wallet.publicKey!);
 const ix = createBurnCheckedInstruction(
-  ata, new PublicKey(RIP_MINT), wallet.publicKey!,
+  ata, new PublicKey(TOKEN_MINT), wallet.publicKey!,
   BigInt(10_000 * 10 ** 6), 6,
 );
 const burnTx = await sendAndConfirm(ix); // your existing tx helper
@@ -107,7 +107,7 @@ const { data: mourned } = await supabase
   `https://2bitdeveloper.github.io`.
 
 ## 6. Order of operations at launch
-1. Deploy schema + functions with `RIP_MINT` as a placeholder.
+1. Deploy schema + functions with `TOKEN_MINT` as a placeholder.
 2. Launch the token on pump.fun, copy the mint.
-3. `supabase secrets set RIP_MINT="..."` (functions pick it up instantly).
+3. `supabase secrets set TOKEN_MINT="..."` (functions pick it up instantly).
 4. Update the CA in the site footer, push to main, Pages redeploys.
