@@ -87,3 +87,8 @@ grant select on public.graveyard_stats to anon, authenticated;
 alter view public.graveyard_stats set (security_invoker = true);
 alter function public.bump_candle_count() set search_path = public, pg_temp;
 revoke execute on function public.bump_candle_count() from anon, authenticated, public;
+
+-- ---------- ECONOMY V2: see migration economy_v2_offerings_and_flames ----------
+-- candle tiers (free/eternal), offerings ledger with 95/5 tithe,
+-- graves.offered_total + eternal_flames, resurrection trigger at 10,000,
+-- stats view: burned_total + sent_to_builders.
