@@ -4,10 +4,14 @@ import bs58 from "npm:bs58@5.0.0";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 export const RPC_URL = Deno.env.get("RPC_URL")!; // set as function secret              // Helius endpoint
-export const RIP_MINT = Deno.env.get("RIP_MINT") ?? ""; // empty = pre-launch mode            // set after launch
+export const TOKEN_MINT = Deno.env.get("TOKEN_MINT") ?? ""; // empty = pre-launch mode
+export const TICKER = Deno.env.get("TICKER") ?? "$GRAVE";
+export const FLAME_BURN = Number(Deno.env.get("FLAME_BURN") ?? "1000");
+export const OFFER_THRESHOLD = Number(Deno.env.get("OFFER_THRESHOLD") ?? "10000");
+export const MIN_OFFER = Number(Deno.env.get("MIN_OFFER") ?? "100");            // set after launch
 export const TOKEN_DECIMALS = Number(Deno.env.get("TOKEN_DECIMALS") ?? "6");
 export const HOLD_THRESHOLD = Number(Deno.env.get("HOLD_THRESHOLD") ?? "1000");
-export const BURN_AMOUNT = Number(Deno.env.get("BURN_AMOUNT") ?? "10000");
+
 
 export const CORS = {
   "Access-Control-Allow-Origin": "*", // tighten to your Pages origin in prod
@@ -69,7 +73,7 @@ export async function ripBalance(wallet: string): Promise<number> {
       jsonrpc: "2.0",
       id: 1,
       method: "getTokenAccountsByOwner",
-      params: [wallet, { mint: RIP_MINT }, { encoding: "jsonParsed" }],
+      params: [wallet, { mint: TOKEN_MINT }, { encoding: "jsonParsed" }],
     }),
   });
   const data = await res.json();
@@ -82,6 +86,46 @@ export async function ripBalance(wallet: string): Promise<number> {
 }
 
 /** Pattern-level moderation: block URLs, handles, and obvious spam vectors. */
+
+/* fetch a confirmed transaction, jsonParsed */
+export async function getParsedTx(sig: string): Promise<any | null> {
+  const res = await fetch(RPC_URL, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getTransaction",
+      params: [sig, { encoding: "jsonParsed", maxSupportedTransactionVersion: 0, commitment: "confirmed" }] }),
+  });
+  return (await res.json())?.result ?? null;
+}
+
+/* total TOKEN_MINT burned by wallet in this tx */
+export function sumBurns(tx: any, wallet: string): number {
+  const all = [
+    ...(tx.transaction.message.instructions ?? []),
+    ...(tx.meta?.innerInstructions ?? []).flatMap((i: any) => i.instructions),
+  ];
+  let burned = 0;
+  for (const ix of all) {
+    const p = ix?.parsed;
+    if (ix?.program !== "spl-token" || !p) continue;
+    if (p.type !== "burn" && p.type !== "burnChecked") continue;
+    const info = p.info;
+    if (info.mint !== TOKEN_MINT) continue;
+    if ((info.authority ?? info.multisigAuthority) !== wallet) continue;
+    burned += p.type === "burnChecked"
+      ? Number(info.tokenAmount.uiAmount)
+      : Number(info.amount) / 10 ** TOKEN_DECIMALS;
+  }
+  return burned;
+}
+
+/* net TOKEN_MINT balance change for owner across the tx (post - pre) */
+export function tokenDelta(tx: any, owner: string): number {
+  const bal = (arr: any[]) => (arr ?? [])
+    .filter((b: any) => b.mint === TOKEN_MINT && b.owner === owner)
+    .reduce((s: number, b: any) => s + Number(b.uiTokenAmount?.uiAmount ?? 0), 0);
+  return bal(tx.meta?.postTokenBalances) - bal(tx.meta?.preTokenBalances);
+}
+
 const BLOCK_PATTERNS = [
   /https?:\/\//i,
   /\bwww\./i,
