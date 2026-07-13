@@ -8,6 +8,8 @@ const CAUSES = new Set([
   "scope creep", "new shiny framework", "it actually worked and I got bored",
   "AWS bill", "got a job", "rewrote it in Rust (never finished)",
   "the tutorial ended", "domain expired", "merge conflict with life",
+  "life got in the way", "ran out of money", "perfectionism",
+  "lost the passion", "the algorithm changed",
 ]);
 
 Deno.serve(async (req) => {
