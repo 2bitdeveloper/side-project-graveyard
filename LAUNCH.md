@@ -15,9 +15,9 @@ when the mint address lands in the two places below.
 1. [ ] Launch on pump.fun — select **Creator Fees** (locked forever at
        creation, this is the revenue model). Copy the mint address (CA).
 2. [ ] Supabase dashboard → Project Settings → Edge Functions → Secrets:
-       add `RIP_MINT = <CA>`. Takes effect on the next request —
+       add `TOKEN_MINT = <CA>`. Takes effect on the next request —
        burial gating and resurrections switch on instantly.
-3. [ ] Edit `index.html` → `CONFIG.RIP_MINT = "<CA>"` → commit → push.
+3. [ ] Edit `index.html` → `CONFIG.TOKEN_MINT = "<CA>"` → commit → push.
        Pages redeploys in ~1 min. This updates the footer CA display and
        unlocks the resurrect button client-side.
 4. [ ] Post the CA simultaneously on every channel + confirm the site
@@ -34,11 +34,19 @@ when the mint address lands in the two places below.
 - [ ] First "Funeral Friday" thread: bury a legendary dead project,
       invite quote-tweets.
 
-## Env reference (function secrets, all optional except RIP_MINT)
+## Env reference (function secrets, all optional except TOKEN_MINT)
 | Secret          | Default (baked)     | Purpose                     |
 |-----------------|---------------------|-----------------------------|
-| RIP_MINT        | "" (pre-launch)     | token mint; enables gating  |
+| TOKEN_MINT        | "" (pre-launch)     | token mint; enables gating  |
 | RPC_URL         | Helius fallback     | balance + burn verification |
-| HOLD_THRESHOLD  | 1000                | $RIP needed to bury         |
-| BURN_AMOUNT     | 10000               | $RIP burned to resurrect    |
+| HOLD_THRESHOLD  | 1000                | $GRAVE needed to bury         |
+| BURN_AMOUNT     | 10000               | $GRAVE burned to resurrect    |
 | TOKEN_DECIMALS  | 6                   | pump.fun default            |
+
+## Economy v2 (current)
+- Candles: free forever (top of funnel).
+- Eternal flame: burn 1,000 $GRAVE → permanent golden flame (one per wallet per grave).
+- Offerings: min 100 $GRAVE, one tx = 95% transferChecked to builder + 5% burnChecked tithe.
+- Resurrection: automatic at 10,000 $GRAVE gross offerings (DB trigger).
+- Functions: bury, light-candle, eternal-flame, offer. `resurrect` is deprecated/dormant.
+- New env names: TOKEN_MINT (was RIP_MINT), plus optional TICKER, FLAME_BURN, OFFER_THRESHOLD, MIN_OFFER.
