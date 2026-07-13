@@ -12,8 +12,8 @@ when the mint address lands in the two places below.
 - [ ] Pre-write the launch thread. Pin the site URL everywhere first.
 
 ## At launch (order matters)
-1. [ ] Launch on pump.fun — select **Creator Fees** (locked forever at
-       creation, this is the revenue model). Copy the mint address (CA).
+1. [ ] Launch on pump.fun — select **CASHBACK COIN** (100% of creator fees
+       to traders, locked forever at creation). Copy the mint address (CA).
 2. [ ] Supabase dashboard → Project Settings → Edge Functions → Secrets:
        add `TOKEN_MINT = <CA>`. Takes effect on the next request —
        burial gating and resurrections switch on instantly.
