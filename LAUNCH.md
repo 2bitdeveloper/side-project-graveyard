@@ -98,3 +98,20 @@ when the mint address lands in the two places below.
 - Eternal flame and offering controls are now visibly present but disabled
   pre-launch ("🔒 unlocks at launch") instead of hidden entirely — hiding
   them read as broken/missing to beta testers rather than "not live yet."
+
+## Bug fixes (this pass, part 2)
+- Root cause of "Failed to fetch" on candles: `npm:bad-words` (added during
+  the security hardening pass) crashed the shared helpers module at cold
+  start in Deno's edge runtime — every request, including the OPTIONS
+  preflight, returned 503, which browsers surface as a generic fetch
+  failure. Confirmed via `get_logs` (503 on OPTIONS, up to 2.1s execution
+  time — a boot crash, not application logic). Replaced with a small
+  dependency-free word-boundary filter. Affected and fixed: bury,
+  eternal-flame, offer, light-candle (which was also decoupled from the
+  shared helpers entirely, since it no longer needs signature verification).
+- Wallet connections (including the read-only viewer) didn't survive a page
+  refresh — state was memory-only. Added localStorage persistence: real
+  wallets attempt a silent, trusted-only reconnect on load (no popup); the
+  read-only viewer restores the saved address directly. Added a working
+  "disconnect" option in the wallet picker (previously unreachable when no
+  browser-extension wallet was detected — exactly the read-only scenario).
