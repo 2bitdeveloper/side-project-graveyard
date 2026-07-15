@@ -1,8 +1,11 @@
 // POST /functions/v1/bury
 // body: { wallet, timestamp, signature, grave: { name, epitaph, cause, born, died } }
 import {
-  admin, json, CORS, verifyWallet, ripBalance, moderationFlag, HOLD_THRESHOLD, TOKEN_MINT, TICKER,
+  admin, json, CORS, verifyWallet, ripBalance, moderationFlag, tooSoon,
+  HOLD_THRESHOLD, TOKEN_MINT, TICKER,
 } from "../_shared/helpers.ts";
+
+const BURY_COOLDOWN_SECONDS = 60; // one grave per wallet per minute, max
 
 const CAUSES = new Set([
   "scope creep", "new shiny framework", "it actually worked and I got bored",
@@ -38,8 +41,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. insert (unique index rejects duplicate burials per wallet+name)
+    // 4. cooldown — one burial per wallet per minute (free action, must resist spam)
     const db = admin();
+    if (await tooSoon(db, "graves", wallet, BURY_COOLDOWN_SECONDS)) {
+      return json({ error: "One burial at a time — the gravedigger needs a minute between plots." }, 429);
+    }
+
+    // 5. insert (unique index rejects duplicate burials per wallet+name)
     const { data, error } = await db.from("graves").insert({
       wallet, name, epitaph,
       cause: grave.cause,
