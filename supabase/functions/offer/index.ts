@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     const spent = -tokenDelta(tx, wallet);
     const gross = received + burned;
 
-    if (received <= 0) return json({ error: "No transfer to the builder found in that transaction." }, 400);
+    if (received <= 0) return json({ error: "No transfer to the creator found in that transaction." }, 400);
     if (gross < MIN_OFFER * 0.99) return json({ error: `Offerings start at ${MIN_OFFER} ${TICKER}.` }, 400);
     if (burned < gross * 0.05 * 0.95) return json({ error: "The tithe is missing — 5% of every offering is burned." }, 400);
     if (spent < gross * 0.99) return json({ error: "Offering must come from the signing wallet." }, 400);
