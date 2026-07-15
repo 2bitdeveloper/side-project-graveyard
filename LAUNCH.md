@@ -50,3 +50,16 @@ when the mint address lands in the two places below.
 - Resurrection: automatic at 10,000 $GRAVE gross offerings (DB trigger).
 - Functions: bury, light-candle, eternal-flame, offer. `resurrect` is deprecated/dormant.
 - New env names: TOKEN_MINT (was RIP_MINT), plus optional TICKER, FLAME_BURN, OFFER_THRESHOLD, MIN_OFFER.
+
+## Security hardening (this pass)
+- CORS locked to https://2bitdeveloper.github.io (was `*`). Override with
+  the `ALLOWED_ORIGIN` secret for local/dev testing.
+- Epitaphs/names now pass through a maintained profanity filter
+  (`bad-words` npm package) in addition to the link/handle/address blocks.
+- Free burials are rate-limited: one grave per wallet per 60 seconds,
+  enforced server-side in `bury`.
+- Wallet coverage extended: Wallet Standard auto-discovery (catches nearly
+  all modern extensions) + legacy fallback list now covers Phantom,
+  Solflare, Backpack, OKX, Bitget, Trust, Coinbase, Glow, Nightly, Coin98,
+  MathWallet, Exodus, Clover — plus mobile deep-links for Phantom/Solflare
+  when no wallet is injected.
