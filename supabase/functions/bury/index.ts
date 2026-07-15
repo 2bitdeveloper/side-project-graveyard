@@ -1,13 +1,15 @@
 // POST /functions/v1/bury
 // body: { wallet, timestamp, signature,
-//   grave: { name, epitaph, cause, causeText?, born, died, style?, custom?, burnTx? } }
+//   grave: { name, epitaph, cause, causeText?, born, died, style?, custom?, burnTx?,
+//            resurrectGoal?, pitch?, linkUrl?, linkLabel? } }
 import {
-  admin, json, CORS, verifyWallet, ripBalance, moderationFlag, tooSoon, getParsedTx, sumBurns,
-  HOLD_THRESHOLD, TOKEN_MINT, TICKER, CUSTOM_TOMBSTONE_BURN,
+  admin, json, CORS, verifyWallet, ripBalance, moderationFlag, tooSoon, getParsedTx, sumBurns, validateLink,
+  HOLD_THRESHOLD, TOKEN_MINT, TICKER, CUSTOM_TOMBSTONE_BURN, MIN_RESURRECT_GOAL, MAX_RESURRECT_GOAL, DEFAULT_RESURRECT_GOAL,
 } from "../_shared/helpers.ts";
 
 const BURY_COOLDOWN_SECONDS = 60;
 const STYLES = new Set(["marble", "onyx", "gold", "crystal"]);
+const LINK_LABELS = new Set(["GitHub", "Website", "Twitter/X", "Demo", "Discord", "Other"]);
 
 const CAUSES = new Set([
   "scope creep", "new shiny framework", "it actually worked and I got bored",
@@ -44,6 +46,30 @@ Deno.serve(async (req) => {
 
     const flag = moderationFlag(name) ?? moderationFlag(epitaph);
     if (flag) return json({ error: flag }, 400);
+
+    const pitch = String(grave?.pitch ?? "").trim().slice(0, 500);
+    if (pitch) {
+      const pitchFlag = moderationFlag(pitch);
+      if (pitchFlag) return json({ error: pitchFlag }, 400);
+    }
+
+    let linkUrl: string | null = null;
+    let linkLabel: string | null = null;
+    if (grave?.linkUrl) {
+      const linkCheck = validateLink(String(grave.linkUrl).trim());
+      if (!linkCheck.ok) return json({ error: linkCheck.err }, 400);
+      linkUrl = linkCheck.url;
+      linkLabel = LINK_LABELS.has(grave?.linkLabel) ? grave.linkLabel : "Other";
+    }
+
+    let resurrectGoal = DEFAULT_RESURRECT_GOAL;
+    if (grave?.resurrectGoal !== undefined && grave?.resurrectGoal !== null && grave?.resurrectGoal !== "") {
+      const g = Math.floor(Number(grave.resurrectGoal));
+      if (!Number.isFinite(g) || g < MIN_RESURRECT_GOAL || g > MAX_RESURRECT_GOAL) {
+        return json({ error: `Resurrection goal must be between ${MIN_RESURRECT_GOAL.toLocaleString()} and ${MAX_RESURRECT_GOAL.toLocaleString()} ${TICKER}.` }, 400);
+      }
+      resurrectGoal = g;
+    }
 
     if (TOKEN_MINT) {
       const balance = await ripBalance(wallet);
@@ -82,6 +108,10 @@ Deno.serve(async (req) => {
 
     const { data, error } = await db.from("graves").insert({
       wallet, name, epitaph, cause, style, custom,
+      resurrect_goal: resurrectGoal,
+      pitch: pitch || null,
+      link_url: linkUrl,
+      link_label: linkLabel,
       born: String(grave?.born ?? "20??").slice(0, 4),
       died: String(grave?.died ?? new Date().getFullYear()).slice(0, 4),
     }).select().single();
