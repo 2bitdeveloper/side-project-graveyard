@@ -1,9 +1,10 @@
 // POST /functions/v1/offer
 // body: { wallet, timestamp, signature, graveId, offerTx }
 // One tx: transferChecked 95% to the grave owner + burnChecked 5% tithe.
+// Resurrection threshold is per-grave (creator-set at burial), not global.
 import {
   admin, json, CORS, verifyWallet, getParsedTx, sumBurns, tokenDelta,
-  TOKEN_MINT, MIN_OFFER, OFFER_THRESHOLD, TICKER,
+  TOKEN_MINT, MIN_OFFER, TICKER,
 } from "../_shared/helpers.ts";
 
 Deno.serve(async (req) => {
@@ -18,10 +19,10 @@ Deno.serve(async (req) => {
 
     const db = admin();
     const { data: grave } = await db.from("graves")
-      .select("id, wallet, community, offered_total, risen").eq("id", graveId).single();
+      .select("id, wallet, community, offered_total, risen, resurrect_goal").eq("id", graveId).single();
     if (!grave) return json({ error: "That grave doesn't exist." }, 404);
     if (grave.community || grave.wallet === "the-keeper") {
-      return json({ error: "Community memorials accept candles only — there is no one left to pay." }, 403);
+      return json({ error: "Community memorials accept candles only \u2014 there is no one left to pay." }, 403);
     }
 
     const tx = await getParsedTx(offerTx);
@@ -35,7 +36,7 @@ Deno.serve(async (req) => {
 
     if (received <= 0) return json({ error: "No transfer to the creator found in that transaction." }, 400);
     if (gross < MIN_OFFER * 0.99) return json({ error: `Offerings start at ${MIN_OFFER} ${TICKER}.` }, 400);
-    if (burned < gross * 0.05 * 0.95) return json({ error: "The tithe is missing — 5% of every offering is burned." }, 400);
+    if (burned < gross * 0.05 * 0.95) return json({ error: "The tithe is missing \u2014 5% of every offering is burned." }, 400);
     if (spent < gross * 0.99) return json({ error: "Offering must come from the signing wallet." }, 400);
 
     const { error: ledgerErr } = await db.from("offerings").insert({
@@ -46,8 +47,8 @@ Deno.serve(async (req) => {
     if (ledgerErr) throw ledgerErr;
 
     const { data: g } = await db.from("graves")
-      .select("offered_total, risen").eq("id", graveId).single();
-    return json({ offered_total: g?.offered_total, risen: g?.risen, threshold: OFFER_THRESHOLD, counted: gross });
+      .select("offered_total, risen, resurrect_goal").eq("id", graveId).single();
+    return json({ offered_total: g?.offered_total, risen: g?.risen, threshold: g?.resurrect_goal, counted: gross });
   } catch (e) {
     console.error("offer failed:", e);
     return json({ error: "The offering was not received. Try again." }, 500);
