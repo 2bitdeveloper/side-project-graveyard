@@ -98,3 +98,9 @@ revoke execute on function public.bump_candle_count() from anon, authenticated, 
 -- Custom tombstones cost a 500 $GRAVE burn (verified in `bury`), pin to the
 -- top via order-by (custom desc, created_at desc). Cause of death now also
 -- accepts free text via the "Something else…" sentinel, moderated server-side.
+
+-- ---------- ECONOMY V4: creator-set resurrection goals + pitch + trust link ----------
+-- graves.resurrect_goal (numeric, 1,000–1,000,000, default 10,000, creator-set at bury time)
+-- graves.pitch (free text, 500 chars, moderated, no links)
+-- graves.link_url / graves.link_label (validated http(s) link + enum label)
+-- apply_offering() trigger now compares against each grave's own resurrect_goal.
