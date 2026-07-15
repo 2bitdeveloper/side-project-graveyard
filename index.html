@@ -144,8 +144,8 @@ main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px}
 .grave canvas{image-rendering:pixelated;width:220px;height:275px;display:block;margin:0 auto}
 .grave .plot{
   position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
-  width:242px;height:14px;background:var(--ground-deep);
-  box-shadow:inset 0 3px 0 rgba(0,0,0,.5);
+  width:242px;height:14px;
+  background:radial-gradient(ellipse at center, rgba(0,0,0,.55) 0%, rgba(0,0,0,.55) 35%, transparent 75%);
 }
 .grave .gname{
   position:absolute;top:92px;left:50%;transform:translateX(-50%);
@@ -592,15 +592,17 @@ function drawTombstone(cv,grave){
   ctx.clearRect(0,0,W,H);
   const risen=grave.risen;
   const STYLE_DEFS={
-    marble:{shape:0,base:"#e8ecf5",dark:"#b7c0d8",lite:"#ffffff",moss:false},
-    onyx:{shape:2,base:"#2a2e3d",dark:"#14171f",lite:"#454b60",moss:true},
-    gold:{shape:1,base:"#d8b34a",dark:"#8a6a1c",lite:"#f5dd8a",moss:false},
-    crystal:{shape:2,base:"#7fd8e0",dark:"#3a8a95",lite:"#c9fbff",moss:false},
+    marble:{shape:0,base:"#e8ecf5",dark:"#b7c0d8",lite:"#ffffff",cap:"#ffffff",edge:"#8b96b8",moss:false},
+    onyx:{shape:2,base:"#2a2e3d",dark:"#14171f",lite:"#454b60",cap:"#6a7290",edge:"#0a0c12",moss:true},
+    gold:{shape:1,base:"#d8b34a",dark:"#8a6a1c",lite:"#f5dd8a",cap:"#fff2c2",edge:"#5c460f",moss:false},
+    crystal:{shape:2,base:"#7fd8e0",dark:"#3a8a95",lite:"#c9fbff",cap:"#eafffe",edge:"#1f545c",moss:false},
   };
   const custom=(!risen && grave.custom) ? STYLE_DEFS[grave.style] : null;
   const base = risen? "#57c9a0" : custom? custom.base : ["#8b93a7","#7f88a0","#959cb0"][Math.floor(rnd()*3)];
   const dark = risen? "#2f8f6b" : custom? custom.dark : "#5a6275";
   const lite = risen? "#a9f2d6" : custom? custom.lite : "#aab1c4";
+  const cap  = risen? "#e3fff2" : custom? custom.cap  : "#eef1f8";
+  const edge = risen? "#1a5c45" : custom? custom.edge : "#3a4051";
   const px=(x,y,c)=>{ctx.fillStyle=c;ctx.fillRect(x*P,y*P,P,P)};
   const shape=custom? custom.shape : Math.floor(rnd()*3);
   const solid=[];
@@ -618,24 +620,38 @@ function drawTombstone(cv,grave){
     fillCols(2,9,10);fillCols(3,8,11);fillCols(4,6,13);fillCols(5,5,14);
     for(let y=6;y<=20;y++)fillCols(y,3,16);
   }
-  for(const[x,y]of solid)px(x,y,base);
+  // per-row min/max, used both for banded shading and to find the cap rows
   const minmax={};
   for(const[x,y]of solid){if(!(y in minmax))minmax[y]=[x,x];minmax[y][0]=Math.min(minmax[y][0],x);minmax[y][1]=Math.max(minmax[y][1],x)}
-  for(const y in minmax){px(minmax[y][0],+y,lite);px(minmax[y][1],+y,dark)}
+  const rows=Object.keys(minmax).map(Number).sort((a,b)=>a-b);
+  const capRows=new Set(rows.slice(0,2)); // topmost rows read as a lit horizontal cap, not a vertical face
+  for(const y of rows){
+    const [x0,x1]=minmax[y];
+    if(capRows.has(y)){ for(let x=x0;x<=x1;x++)px(x,y,cap); continue; }
+    const w=x1-x0+1;
+    const hi=Math.max(1,Math.round(w*0.3));
+    const sh=Math.max(2,Math.round(w*0.35));
+    for(let x=x0;x<=x1;x++){
+      let c;
+      if(x-x0<hi) c=lite;
+      else if(x1-x<sh) c=(x===x1)?edge:dark;
+      else c=base;
+      px(x,y,c);
+    }
+  }
   const cracks=1+Math.floor(rnd()*3);
   for(let i=0;i<cracks;i++){
     let cx=6+Math.floor(rnd()*8), cy=8+Math.floor(rnd()*10);
-    for(let s=0;s<3;s++){px(cx,cy,dark);cx+=rnd()<.5?-1:1;cy++}
+    for(let s=0;s<3;s++){px(cx,cy,edge);cx+=rnd()<.5?-1:1;cy++}
   }
   const allowMoss = risen? false : custom? custom.moss : true;
   if(allowMoss){const moss=Math.floor(rnd()*4);
     for(let i=0;i<moss;i++){px(4+Math.floor(rnd()*12),17+Math.floor(rnd()*3),"#4a6b52")}
   }
-  ctx.fillStyle="#1b2233";
-  ctx.fillRect(1*P,21*P,18*P,2*P);
-  ctx.fillStyle="#232c42";
-  ctx.fillRect(2*P,21*P,16*P,P);
-  for(let i=0;i<4;i++){px(2+Math.floor(rnd()*16),20,"#3c5a46")}
+  // stepped pedestal, same material as the stone: a lit upper tier under it, a shadowed wider base tier
+  for(let y=21;y<=22;y++)for(let x=1;x<=18;x++)px(x,y, y===21?lite:(x===18?edge:base));
+  for(let y=23;y<=24;y++)for(let x=0;x<=19;x++)px(x,y, x===19?edge:dark);
+  for(let i=0;i<4;i++){px(2+Math.floor(rnd()*16),22,"#3c5a46")}
 }
 
 /* ---------- DOM ---------- */
