@@ -92,3 +92,9 @@ revoke execute on function public.bump_candle_count() from anon, authenticated, 
 -- candle tiers (free/eternal), offerings ledger with 95/5 tithe,
 -- graves.offered_total + eternal_flames, resurrection trigger at 10,000,
 -- stats view: burned_total + sent_to_builders.
+
+-- ---------- ECONOMY V3: custom tombstones ----------
+-- graves.style (classic/marble/onyx/gold/crystal), graves.custom boolean.
+-- Custom tombstones cost a 500 $GRAVE burn (verified in `bury`), pin to the
+-- top via order-by (custom desc, created_at desc). Cause of death now also
+-- accepts free text via the "Something else…" sentinel, moderated server-side.
