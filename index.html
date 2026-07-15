@@ -207,6 +207,7 @@ main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px}
 }
 .hold-req b{color:var(--candle)}
 .err{color:var(--danger);font-size:12px;margin-top:6px;display:none}
+.modal input:disabled{opacity:.4;cursor:not-allowed}
 /* grave detail */
 #detail-epitaph{
   border-left:3px solid var(--candle);padding:6px 0 6px 14px;margin:16px 0;
@@ -928,10 +929,22 @@ function openDetail(grave){
   const memorial=grave.community||grave.wallet==="the-keeper";
   const live=!!CONFIG.TOKEN_MINT;
   $("candle-btn").style.display=isReal?"inline-block":"none";
-  $("flame-btn").style.display=(isReal&&live)?"inline-block":"none";
-  const offerable=isReal&&!memorial&&live;
-  $("offer-box").style.display=offerable?"block":"none";
-  if(offerable)renderOfferProgress(grave);
+
+  $("flame-btn").style.display=isReal?"inline-block":"none";
+  $("flame-btn").disabled=!live;
+  $("flame-btn").textContent=live?"🔥 eternal flame — burn 1,000":"🔒 eternal flame — unlocks at launch";
+
+  const showOfferBox=isReal&&!memorial;
+  $("offer-box").style.display=showOfferBox?"block":"none";
+  $("offer-amt").disabled=!live;
+  $("offer-btn").disabled=!live;
+  if(showOfferBox){
+    if(live){ renderOfferProgress(grave); }
+    else{
+      $("offer-bar").style.width="0%";
+      $("offer-progress-label").textContent="🔒 Offerings unlock when "+CONFIG.TICKER+" goes live.";
+    }
+  }
   const goal=(grave.resurrectGoal||CONFIG.OFFER_THRESHOLD).toLocaleString();
   $("detail-hint").textContent=
     !isReal ? "An unmarked grave. Some projects die without even a name to mourn."
@@ -954,8 +967,8 @@ $("candle-btn").addEventListener("click",async()=>{
   if(!activeGrave?.id)return;
   const grave=activeGrave;
   try{
-    await ensureWallet();
-    const d=await callFn("light-candle",{...(await signedPayload("candle")),graveId:grave.id});
+    await ensureWallet(); // candles are free — a connected address is enough, no signature needed
+    const d=await callFn("light-candle",{wallet:state.wallet,graveId:grave.id});
     grave.candles=d.candles??grave.candles+1;
     refreshGrave(grave);loadStats();loadMourned();
     toast("A candle flickers for "+grave.name+".");
