@@ -223,6 +223,11 @@ main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px}
 .style-swatch.selected{border-color:var(--candle);color:var(--candle);box-shadow:0 0 0 1px var(--candle)}
 .readonly-box{border-top:2px solid var(--stone-dim);margin-top:16px;padding-top:16px}
 #readonly-form{margin-top:12px}
+.resurrect-section{border-top:2px solid var(--stone-dim);margin-top:18px;padding-top:16px}
+.resurrect-heading{font-family:var(--px-display);font-size:11px;color:var(--risen);margin-bottom:10px;letter-spacing:.5px}
+.detail-pitch{font-size:13px;color:var(--moonlight);line-height:1.55;margin:14px 0;padding:12px 14px;border-left:3px solid var(--risen);background:rgba(126,240,192,.06)}
+.detail-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--candle);text-decoration:none;border:2px solid var(--stone-dim);padding:7px 12px;margin-bottom:6px}
+.detail-link:hover{border-color:var(--candle)}
 .grave.is-custom{filter:drop-shadow(0 0 6px rgba(255,215,0,.35))}
 .tag-custom{background:#ffd700;color:var(--night)}
 /* ---------- economy ---------- */
@@ -411,6 +416,38 @@ footer .disclaimer{max-width:560px;margin:14px auto 0;color:var(--stone-dim);lin
         <div class="style-grid" id="style-grid"></div>
       </div>
     </div>
+
+    <div class="resurrect-section">
+      <h4 class="resurrect-heading">⚡ RESURRECTION (optional)</h4>
+      <p class="hint" style="margin-bottom:14px">If you'd want this project funded back to life, tell the graveyard what it does and where to follow it. A real pitch and a working link are what convince strangers to fund a stranger's project.</p>
+      <div class="field">
+        <label for="f-goal">resurrection goal ($GRAVE)</label>
+        <input id="f-goal" type="number" min="1000" max="1000000" step="500" placeholder="10000">
+      </div>
+      <div class="field">
+        <label for="f-pitch">what does it do? what would finishing it take?</label>
+        <textarea id="f-pitch" maxlength="500" placeholder="A browser extension that auto-generates changelogs from commit history. Core parser works; needs a UI and packaging for the Chrome Web Store."></textarea>
+        <div class="charcount"><span id="f-pitch-count">0</span>/500</div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="f-link-label">link type</label>
+          <select id="f-link-label">
+            <option>GitHub</option>
+            <option>Website</option>
+            <option>Twitter/X</option>
+            <option>Demo</option>
+            <option>Discord</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-link-url">link to follow progress</label>
+          <input id="f-link-url" placeholder="https://github.com/you/project">
+        </div>
+      </div>
+    </div>
+
     <p class="err" id="bury-err">A grave needs at least a name and an epitaph.</p>
     <div class="modal-actions">
       <button class="btn" data-close>not yet</button>
@@ -426,6 +463,8 @@ footer .disclaimer{max-width:560px;margin:14px auto 0;color:var(--stone-dim);lin
     <h3 id="detail-title">GRAVE OF …</h3>
     <blockquote id="detail-epitaph"></blockquote>
     <div class="detail-meta" id="detail-meta"></div>
+    <p class="detail-pitch" id="detail-pitch" style="display:none"></p>
+    <a class="detail-link" id="detail-link" target="_blank" rel="noopener noreferrer" style="display:none"></a>
     <div class="modal-actions" style="margin-top:22px">
       <button class="btn" data-close>leave quietly</button>
       <button class="btn btn-candle" id="candle-btn">🕯 light a candle</button>
@@ -515,7 +554,9 @@ function normalizeGrave(row){
     cause:row.cause, born:row.born, died:row.died, risen:row.risen,
     candles:row.candles_count??0, community:row.community,
     offered_total:Number(row.offered_total??0), eternal:row.eternal_flames??0,
-    style:row.style??"classic", custom:!!row.custom };
+    style:row.style??"classic", custom:!!row.custom,
+    resurrectGoal:Number(row.resurrect_goal??CONFIG.OFFER_THRESHOLD),
+    pitch:row.pitch||"", linkUrl:row.link_url||"", linkLabel:row.link_label||"" };
 }
 
 /* procedural filler graves — shown only once real graves run out */
@@ -864,6 +905,16 @@ function openDetail(grave){
     (grave.eternal>0?" · eternal flames: <b>"+grave.eternal+"</b>":"")+
     (grave.community?"<br><b>community memorial</b>":"")+
     (grave.risen?"<br><b style='color:var(--risen)'>RISEN — the community paid its creator to finish it.</b>":"");
+
+  const pitchEl=$("detail-pitch"), linkEl=$("detail-link");
+  if(grave.pitch){ pitchEl.textContent=grave.pitch; pitchEl.style.display="block"; }
+  else pitchEl.style.display="none";
+  if(grave.linkUrl){
+    linkEl.href=grave.linkUrl;
+    linkEl.textContent="↗ "+(grave.linkLabel||"Link")+" — follow this project";
+    linkEl.style.display="inline-flex";
+  }else linkEl.style.display="none";
+
   const isReal=!!grave.id;
   const memorial=grave.community||grave.wallet==="the-keeper";
   const live=!!CONFIG.TOKEN_MINT;
@@ -872,19 +923,21 @@ function openDetail(grave){
   const offerable=isReal&&!memorial&&live;
   $("offer-box").style.display=offerable?"block":"none";
   if(offerable)renderOfferProgress(grave);
+  const goal=(grave.resurrectGoal||CONFIG.OFFER_THRESHOLD).toLocaleString();
   $("detail-hint").textContent=
     !isReal ? "An unmarked grave. Some projects die without even a name to mourn."
     : memorial ? "A community memorial — it belongs to everyone and no one. Candles only."
     : !live ? "Eternal flames and offerings unlock when "+CONFIG.TICKER+" goes live. Candles are free forever."
     : grave.risen ? "Offerings still flow to the creator — 95% to them, 5% burned."
-    : "Offerings go 95% to the creator's wallet, 5% burned as the graveyard's tithe. At "+CONFIG.OFFER_THRESHOLD.toLocaleString()+" "+CONFIG.TICKER+" raised, the project rises.";
+    : "Offerings go 95% to the creator's wallet, 5% burned as the graveyard's tithe. At "+goal+" "+CONFIG.TICKER+" raised, the project rises.";
   openOverlay("detail-overlay");
 }
 function renderOfferProgress(g){
-  const pct=Math.min(100,(Number(g.offered_total)/CONFIG.OFFER_THRESHOLD)*100);
+  const goal=g.resurrectGoal||CONFIG.OFFER_THRESHOLD;
+  const pct=Math.min(100,(Number(g.offered_total)/goal)*100);
   $("offer-bar").style.width=pct+"%";
   $("offer-progress-label").textContent=
-    Number(g.offered_total).toLocaleString()+" / "+CONFIG.OFFER_THRESHOLD.toLocaleString()+" "+CONFIG.TICKER+
+    Number(g.offered_total).toLocaleString()+" / "+goal.toLocaleString()+" "+CONFIG.TICKER+
     (g.risen?" — RISEN":" raised toward resurrection");
 }
 
@@ -1021,6 +1074,7 @@ async function sendTokenTx(ixs){
 $("bury-cta").addEventListener("click",()=>{updateHoldStatus();openOverlay("bury-overlay")});
 $("visit-cta").addEventListener("click",()=>$("cemetery").scrollIntoView({behavior:"smooth"}));
 $("f-epitaph").addEventListener("input",e=>{$("f-count").textContent=e.target.value.length});
+$("f-pitch").addEventListener("input",e=>{$("f-pitch-count").textContent=e.target.value.length});
 
 const CUSTOM_CAUSE_SENTINEL="Something else…";
 $("f-cause").addEventListener("change",e=>{
@@ -1081,6 +1135,22 @@ $("bury-confirm").addEventListener("click",async()=>{
       born:$("f-born").value.trim()||"20??",
       died:$("f-died").value.trim()||String(new Date().getFullYear()) };
 
+    const goalRaw=$("f-goal").value.trim();
+    if(goalRaw){
+      const g=Math.floor(Number(goalRaw));
+      if(!Number.isFinite(g)||g<1000||g>1000000){toast("Resurrection goal must be between 1,000 and 1,000,000 $GRAVE.");return}
+      gravePayload.resurrectGoal=g;
+    }
+    const pitch=$("f-pitch").value.trim();
+    if(pitch)gravePayload.pitch=pitch;
+    const linkUrl=$("f-link-url").value.trim();
+    if(linkUrl){
+      try{ const u=new URL(linkUrl); if(u.protocol!=="http:"&&u.protocol!=="https:")throw 0; }
+      catch{ toast("That link needs to start with http:// or https://.");return }
+      gravePayload.linkUrl=linkUrl;
+      gravePayload.linkLabel=$("f-link-label").value;
+    }
+
     if(wantsCustomTomb){
       if(!CONFIG.TOKEN_MINT){toast("Custom tombstones unlock when "+CONFIG.TICKER+" goes live.");return}
       toast("Approve the burn — "+CONFIG.CUSTOM_TOMBSTONE_BURN.toLocaleString()+" "+CONFIG.TICKER+" for a custom stone…");
@@ -1103,6 +1173,8 @@ $("bury-confirm").addEventListener("click",async()=>{
     $("f-cause-custom").value="";$("f-cause-custom-field").style.display="none";
     document.querySelector('input[name="tomb-tier"][value="standard"]').checked=true;
     $("tomb-styles").style.display="none";
+    $("f-goal").value="";$("f-pitch").value="";$("f-pitch-count").textContent="0";
+    $("f-link-url").value="";$("f-link-label").selectedIndex=0;
     closeOverlays();
     grave._el.scrollIntoView({behavior:"smooth",block:"center"});
   }catch(e){ toast(e.message) }
