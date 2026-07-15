@@ -9,8 +9,10 @@ export const RPC_URL = Deno.env.get("RPC_URL")!; // set as function secret      
 export const TOKEN_MINT = Deno.env.get("TOKEN_MINT") ?? ""; // empty = pre-launch mode
 export const TICKER = Deno.env.get("TICKER") ?? "$GRAVE";
 export const FLAME_BURN = Number(Deno.env.get("FLAME_BURN") ?? "1000");
-export const OFFER_THRESHOLD = Number(Deno.env.get("OFFER_THRESHOLD") ?? "10000");
 export const MIN_OFFER = Number(Deno.env.get("MIN_OFFER") ?? "100");
+export const DEFAULT_RESURRECT_GOAL = Number(Deno.env.get("DEFAULT_RESURRECT_GOAL") ?? "10000");
+export const MIN_RESURRECT_GOAL = Number(Deno.env.get("MIN_RESURRECT_GOAL") ?? "1000");
+export const MAX_RESURRECT_GOAL = Number(Deno.env.get("MAX_RESURRECT_GOAL") ?? "1000000");
 export const CUSTOM_TOMBSTONE_BURN = Number(Deno.env.get("CUSTOM_TOMBSTONE_BURN") ?? "500");            // set after launch
 export const TOKEN_DECIMALS = Number(Deno.env.get("TOKEN_DECIMALS") ?? "6");
 export const HOLD_THRESHOLD = Number(Deno.env.get("HOLD_THRESHOLD") ?? "1000");
@@ -153,4 +155,16 @@ export async function tooSoon(db: ReturnType<typeof admin>, table: string, walle
     .eq("wallet", wallet).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!data) return false;
   return (Date.now() - Date.parse(data.created_at)) < seconds * 1000;
+}
+
+export function validateLink(raw) {
+  if (raw.length > 300) return { ok: false, err: "That link is too long." };
+  let u;
+  try { u = new URL(raw); } catch { return { ok: false, err: "That doesn't look like a valid link." }; }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return { ok: false, err: "Links must start with http:// or https://." };
+  const host = u.hostname.toLowerCase();
+  if (host === "localhost" || host === "127.0.0.1" || host.startsWith("192.168.") || host.startsWith("10.") || !host.includes(".")) {
+    return { ok: false, err: "That link needs to point somewhere public." };
+  }
+  return { ok: true, url: u.toString() };
 }
