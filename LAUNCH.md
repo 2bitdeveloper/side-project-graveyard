@@ -88,3 +88,13 @@ when the mint address lands in the two places below.
 - Grave detail view now shows the pitch and an outbound link when present.
 - New env: DEFAULT_RESURRECT_GOAL (10000), MIN_RESURRECT_GOAL (1000),
   MAX_RESURRECT_GOAL (1000000). OFFER_THRESHOLD is retired server-side.
+
+## Bug fixes (this pass)
+- Candles no longer require a wallet signature — only a connected address.
+  They're free and low-stakes, so requiring a signature blocked anyone on a
+  non-signing wallet (e.g. pump.fun's embedded wallet via the read-only
+  viewer) from lighting one at all. All other actions (bury, eternal flame,
+  custom tombstone, offer) still require a real signature.
+- Eternal flame and offering controls are now visibly present but disabled
+  pre-launch ("🔒 unlocks at launch") instead of hidden entirely — hiding
+  them read as broken/missing to beta testers rather than "not live yet."
