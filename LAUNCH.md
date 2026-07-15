@@ -63,3 +63,15 @@ when the mint address lands in the two places below.
   Solflare, Backpack, OKX, Bitget, Trust, Coinbase, Glow, Nightly, Coin98,
   MathWallet, Exodus, Clover — plus mobile deep-links for Phantom/Solflare
   when no wallet is injected.
+
+## Economy v3 (current)
+- Custom tombstones: burn 500 $GRAVE, choose marble/onyx/gold/crystal style,
+  grave pins to the top of the cemetery (order: custom desc, created_at desc).
+  Locked pre-launch (needs TOKEN_MINT), same as flames/offerings.
+- Cause of death: dropdown now includes "Something else…", revealing a free-text
+  field (60 chars, moderated server-side) instead of the fixed enum.
+- Wallet picker: added a read-only address viewer for pump.fun's embedded wallet
+  (Privy-based, doesn't inject into external sites). Lets people browse without
+  a signing wallet; any bury/candle/flame/offer attempt explains it needs a
+  real signing wallet (Phantom, Solflare, or an exported pump.fun key).
+- New env: CUSTOM_TOMBSTONE_BURN (default 500).
