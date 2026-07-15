@@ -555,25 +555,56 @@ function normalizeGrave(row){
     pitch:row.pitch||"", linkUrl:row.link_url||"", linkLabel:row.link_label||"" };
 }
 
-/* procedural filler graves — shown only once real graves run out */
-const ADJ=["untitled","final","awesome","simple","tiny","ultimate","quick","smart","micro","legacy"];
-const NOUN=["app","bot","tracker","engine","dashboard","clone","api","game","tool","framework"];
-const SUFFIX=["-v2","-v9","-final","-FINAL2","-old","-new","-backup","-test","",""];
-const EPITAPHS=[
-  "The commit history tells its own story.","It compiled once. We have witnesses.",
-  "Deprecated by its own author.","The README promised so much.",
-  "Last commit message: 'wip'.","It works on my machine, forever.",
-  "Awaiting a refactor that never came.","Starred by 3. Missed by 1.",
-  "The branch was never merged.","Cause of death: Tuesday.",
+/* procedural filler graves — shown only once real graves run out.
+   Bucketed by category so the noun and epitaph actually match each other
+   (a "mixtape" gets a music epitaph, not a git commit joke), and pools are
+   large enough that ~96 draws rarely repeat the same line twice. */
+const ADJ=["untitled","final","awesome","simple","tiny","ultimate","quick","smart","lost","legacy","forgotten","half-finished","weekend","secret"];
+const SUFFIX=["-v2","-v9","-final","-FINAL2","-old","-new","-backup","-test","","",""];
+const BUCKETS=[
+  { nouns:["app","bot","tracker","engine","dashboard","clone","api","tool","framework","extension"],
+    epitaphs:[
+      "The commit history tells its own story.","It compiled once. We have witnesses.",
+      "Deprecated by its own author.","The README promised so much.",
+      "Last commit message: 'wip'.","It works on my machine, forever.",
+      "Awaiting a refactor that never came.","Starred by 3. Missed by 1.",
+      "The branch was never merged.","Cause of death: Tuesday.",
+    ]},
+  { nouns:["mixtape","ep","playlist","demo","remix","album","setlist","b-side"],
+    epitaphs:[
+      "The demo never left the hard drive.","Mixed once, mastered never.",
+      "Track four was going to be the single.","The setlist only existed on paper.",
+      "Recorded in a closet, buried in a folder.","Track two still needs vocals. It always will.",
+    ]},
+  { nouns:["zine","newsletter","manuscript","blog","chapbook","column","podcast"],
+    epitaphs:[
+      "Chapter three was where it stalled.","The subscriber count never left single digits.",
+      "Drafted, redrafted, never sent.","The outline was more finished than the book.",
+      "Issue two was going to fix everything.","Episode one was also episode last.",
+    ]},
+  { nouns:["comic","mural","printrun","sketchbook","collection","gallery"],
+    epitaphs:[
+      "More crossed-out pages than finished ones.","It looked better in the reference photos.",
+      "The Etsy shop had one sale, from a friend.","The prototype worked. Production never happened.",
+      "Page fourteen was where the plot lost the plot.",
+    ]},
+  { nouns:["shop","club","league","meetup","brand","cratebox","bakery"],
+    epitaphs:[
+      "The first cohort was also the last.","Opening day was also closing week.",
+      "The group chat has four people and one of them is the founder.",
+      "The business plan had a typo on page one nobody fixed.",
+      "Week one had twelve people. Week nine had the host.",
+    ]},
 ];
-const CAUSES=["scope creep","new shiny framework","got a job","AWS bill","the tutorial ended","domain expired","merge conflict with life"];
+const CAUSES=["scope creep","new shiny framework","got a job","AWS bill","the tutorial ended","domain expired","merge conflict with life","life got in the way","ran out of money","perfectionism","lost the passion","the algorithm changed"];
 let fillerSeed=1337;
 function makeFillerGrave(){
   const rnd=mulberry32(fillerSeed++);
-  const name=ADJ[Math.floor(rnd()*ADJ.length)]+"-"+NOUN[Math.floor(rnd()*NOUN.length)]+SUFFIX[Math.floor(rnd()*SUFFIX.length)];
+  const bucket=BUCKETS[Math.floor(rnd()*BUCKETS.length)];
+  const name=ADJ[Math.floor(rnd()*ADJ.length)]+"-"+bucket.nouns[Math.floor(rnd()*bucket.nouns.length)]+SUFFIX[Math.floor(rnd()*SUFFIX.length)];
   const born=2015+Math.floor(rnd()*10);
   return{ id:null, wallet:null,
-    name, epitaph:EPITAPHS[Math.floor(rnd()*EPITAPHS.length)],
+    name, epitaph:bucket.epitaphs[Math.floor(rnd()*bucket.epitaphs.length)],
     cause:CAUSES[Math.floor(rnd()*CAUSES.length)],
     born:String(born), died:String(born+Math.floor(rnd()*3)),
     candles:0, risen:false, community:false };
