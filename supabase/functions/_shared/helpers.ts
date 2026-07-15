@@ -10,7 +10,8 @@ export const TOKEN_MINT = Deno.env.get("TOKEN_MINT") ?? ""; // empty = pre-launc
 export const TICKER = Deno.env.get("TICKER") ?? "$GRAVE";
 export const FLAME_BURN = Number(Deno.env.get("FLAME_BURN") ?? "1000");
 export const OFFER_THRESHOLD = Number(Deno.env.get("OFFER_THRESHOLD") ?? "10000");
-export const MIN_OFFER = Number(Deno.env.get("MIN_OFFER") ?? "100");            // set after launch
+export const MIN_OFFER = Number(Deno.env.get("MIN_OFFER") ?? "100");
+export const CUSTOM_TOMBSTONE_BURN = Number(Deno.env.get("CUSTOM_TOMBSTONE_BURN") ?? "500");            // set after launch
 export const TOKEN_DECIMALS = Number(Deno.env.get("TOKEN_DECIMALS") ?? "6");
 export const HOLD_THRESHOLD = Number(Deno.env.get("HOLD_THRESHOLD") ?? "1000");
 
