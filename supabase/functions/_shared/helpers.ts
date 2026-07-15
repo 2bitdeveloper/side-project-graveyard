@@ -2,6 +2,8 @@
 import nacl from "npm:tweetnacl@1.0.3";
 import bs58 from "npm:bs58@5.0.0";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import Filter from "npm:bad-words@4.0.0"; // maintained third-party profanity list
+const profanity = new Filter();
 
 export const RPC_URL = Deno.env.get("RPC_URL")!; // set as function secret              // Helius endpoint
 export const TOKEN_MINT = Deno.env.get("TOKEN_MINT") ?? ""; // empty = pre-launch mode
@@ -13,10 +15,13 @@ export const TOKEN_DECIMALS = Number(Deno.env.get("TOKEN_DECIMALS") ?? "6");
 export const HOLD_THRESHOLD = Number(Deno.env.get("HOLD_THRESHOLD") ?? "1000");
 
 
+// locked to the live site; set ALLOWED_ORIGIN secret to override (e.g. for local dev)
+const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "https://2bitdeveloper.github.io";
 export const CORS = {
-  "Access-Control-Allow-Origin": "*", // tighten to your Pages origin in prod
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Vary": "Origin",
 };
 
 export function json(body: unknown, status = 200) {
@@ -137,5 +142,14 @@ const BLOCK_PATTERNS = [
 ];
 export function moderationFlag(text: string): string | null {
   for (const p of BLOCK_PATTERNS) if (p.test(text)) return "Links, handles, and addresses can't be engraved on stones.";
+  if (profanity.isProfane(text)) return "Let's keep the epitaphs printable, please.";
   return null;
+}
+
+/** Simple per-wallet cooldown so free actions (burials) can't be spammed. */
+export async function tooSoon(db: ReturnType<typeof admin>, table: string, wallet: string, seconds: number): Promise<boolean> {
+  const { data } = await db.from(table).select("created_at")
+    .eq("wallet", wallet).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!data) return false;
+  return (Date.now() - Date.parse(data.created_at)) < seconds * 1000;
 }
