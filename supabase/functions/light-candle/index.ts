@@ -1,12 +1,23 @@
 // POST /functions/v1/light-candle
 // body: { wallet, graveId }
-// Candles are free and low-stakes (cosmetic, rate-limited to one per wallet
-// per grave per day) so this endpoint intentionally does NOT require a
-// signature — any connected address (including read-only viewers, e.g. for
-// wallets like pump.fun's that can't sign messages to outside sites) can
-// light a candle. Worst-case abuse is someone burning a stranger's daily
-// slot; there's no value transfer and nothing permanent at stake.
-import { admin, json, CORS } from "../_shared/helpers.ts";
+// Self-contained on purpose: doesn't import the shared helpers.ts (which
+// pulls in npm:tweetnacl/bs58/supabase-js and used to pull in bad-words) —
+// this function only ever needed supabase-js and doesn't verify signatures.
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "https://2bitdeveloper.github.io";
+const CORS = {
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Vary": "Origin",
+};
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
+}
+function admin() {
+  return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+}
 
 const SOLANA_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
