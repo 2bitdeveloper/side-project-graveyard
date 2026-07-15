@@ -75,3 +75,16 @@ when the mint address lands in the two places below.
   a signing wallet; any bury/candle/flame/offer attempt explains it needs a
   real signing wallet (Phantom, Solflare, or an exported pump.fun key).
 - New env: CUSTOM_TOMBSTONE_BURN (default 500).
+
+## Economy v4 (current)
+- Resurrection goals are now creator-set at burial time (1,000–1,000,000
+  $GRAVE, default 10,000), not a global constant. The `apply_offering`
+  trigger checks each grave's own `resurrect_goal`.
+- New "RESURRECTION" section in the burial modal: optional pitch (what the
+  project does / what finishing it needs, 500 chars, moderated) and a
+  validated trust link (GitHub/Website/Twitter/Demo/Discord/Other, http(s)
+  only, no local/private hosts) so funders can verify the project is real
+  and follow its progress.
+- Grave detail view now shows the pitch and an outbound link when present.
+- New env: DEFAULT_RESURRECT_GOAL (10000), MIN_RESURRECT_GOAL (1000),
+  MAX_RESURRECT_GOAL (1000000). OFFER_THRESHOLD is retired server-side.
