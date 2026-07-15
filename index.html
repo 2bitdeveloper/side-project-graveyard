@@ -754,8 +754,8 @@ function registerStandardWallet(w){
     if(!(w.chains||[]).some(c=>String(c).startsWith("solana:")))return;
     discovered.set(w.name,{
       name:w.name, icon:w.icon||null, _account:null,
-      async connect(){
-        const r=await f["standard:connect"].connect();
+      async connect(opts){
+        const r=await f["standard:connect"].connect(opts?.silent?{silent:true}:{});
         const acc=(r.accounts||[]).find(a=>(a.chains||[]).some(c=>String(c).startsWith("solana:")))||(r.accounts||[])[0];
         if(!acc)throw new Error("No account authorized.");
         this._account=acc;
@@ -782,7 +782,10 @@ try{window.dispatchEvent(new CustomEvent("wallet-standard:app-ready",{detail:wsA
 
 function legacyAdapter(name,provider){
   return{ name, icon:null,
-    async connect(){ const r=await provider.connect(); const pk=r?.publicKey??provider.publicKey; return pk.toString(); },
+    async connect(opts){
+      const r=await provider.connect(opts?.silent?{onlyIfTrusted:true}:{});
+      const pk=r?.publicKey??provider.publicKey; return pk.toString();
+    },
     async signMessage(bytes){ const r=await provider.signMessage(bytes,"utf8"); return r?.signature??r; },
     async signAndSendTransaction(tx){ const {signature}=await provider.signAndSendTransaction(tx); return signature; },
   };
@@ -827,6 +830,19 @@ const isMobile=/android|iphone|ipad|mobile/i.test(navigator.userAgent);
 function renderWalletPicker(){
   sweepLegacyWallets();
   const list=$("wallet-list");list.innerHTML="";
+  function appendDisconnect(){
+    if(!state.wallet)return;
+    const dc=document.createElement("button");
+    dc.className="btn wallet-opt";dc.style.color="var(--stone-dim)";dc.style.borderColor="var(--stone-dim)";
+    dc.textContent="✕ disconnect "+shortAddr(state.wallet);
+    dc.addEventListener("click",()=>{
+      state.wallet=null;state.adapter=null;clearWalletPref();
+      $("wallet-btn").textContent="connect wallet";
+      toast("Disconnected.");
+      renderWalletPicker();
+    });
+    list.appendChild(dc);
+  }
   if(discovered.size===0){
     const here=encodeURIComponent(location.href.split("#")[0]);
     const ref=encodeURIComponent(location.origin);
@@ -842,6 +858,7 @@ function renderWalletPicker(){
         '<a class="btn wallet-opt" href="https://phantom.com" target="_blank" rel="noopener">👻 Get Phantom</a>'+
         '<a class="btn wallet-opt" href="https://solflare.com" target="_blank" rel="noopener">🔆 Get Solflare</a>';
     }
+    appendDisconnect();
     return;
   }
   $("wallet-hint").textContent="Sign-ins are free — you only sign a message, never a transaction, to bury or mourn.";
@@ -856,6 +873,7 @@ function renderWalletPicker(){
     b.addEventListener("click",()=>connectWith(adapter));
     list.appendChild(b);
   }
+  appendDisconnect();
 }
 async function connectWith(adapter){
   try{
@@ -867,6 +885,7 @@ async function connectWith(adapter){
     toast(adapter.readOnly
       ? "Viewing "+shortAddr(state.wallet)+" read-only — browsing only, no signing."
       : "Connected via "+adapter.name+". Welcome to the graveyard.");
+    saveWalletPref(adapter);
   }catch(e){ state.adapter=null;state.wallet=null;toast(e.message||"Connection refused.") }
 }
 function openWalletPicker(){renderWalletPicker();openOverlay("wallet-overlay")}
@@ -896,6 +915,44 @@ $("readonly-confirm").addEventListener("click",()=>{
   catch{ toast("That doesn't look like a valid Solana address.");return }
   connectWith(readOnlyAdapter(addr));
 });
+
+/* ---------- wallet persistence: survive page refresh ---------- */
+const WALLET_KEY="graveyard:wallet";
+function saveWalletPref(adapter){
+  try{
+    if(adapter.readOnly) localStorage.setItem(WALLET_KEY, JSON.stringify({type:"readonly", address:state.wallet}));
+    else localStorage.setItem(WALLET_KEY, JSON.stringify({type:"named", name:adapter.name}));
+  }catch{}
+}
+function clearWalletPref(){ try{ localStorage.removeItem(WALLET_KEY); }catch{} }
+async function tryRestoreWallet(){
+  let saved;
+  try{ saved=JSON.parse(localStorage.getItem(WALLET_KEY)||"null"); }catch{ saved=null; }
+  if(!saved) return;
+  if(saved.type==="readonly"){
+    if(!saved.address) return;
+    try{
+      const sw=window.solanaWeb3;
+      if(sw) new sw.PublicKey(saved.address); // sanity check before restoring
+      const adapter=readOnlyAdapter(saved.address);
+      state.adapter=adapter; state.wallet=await adapter.connect();
+      $("wallet-btn").textContent="👁 "+shortAddr(state.wallet)+" (read-only)";
+      updateHoldStatus();
+    }catch{ clearWalletPref(); }
+    return;
+  }
+  // named wallet: attempt a silent, trusted-only reconnect — no popup,
+  // fails quietly if the extension isn't present or trust was revoked
+  sweepLegacyWallets();
+  const adapter=discovered.get(saved.name);
+  if(!adapter) return;
+  try{
+    state.wallet=await adapter.connect({silent:true});
+    state.adapter=adapter;
+    $("wallet-btn").textContent="⛓ "+shortAddr(state.wallet);
+    updateHoldStatus();
+  }catch{ /* not auto-trusted (yet) — leave disconnected, no error shown */ }
+}
 
 /* ---------- modals ---------- */
 function openOverlay(id){$(id).classList.add("open")}
@@ -1243,6 +1300,7 @@ if(CONFIG.TOKEN_MINT)$("ca").textContent=CONFIG.TOKEN_MINT;
 
 /* ---------- init ---------- */
 loadStats();loadMourned();loadMoreGraves();
+tryRestoreWallet();
 </script>
 </body>
 </html>
