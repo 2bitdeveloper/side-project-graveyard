@@ -18,6 +18,8 @@ export const MIN_RESURRECT_GOAL = Number(Deno.env.get("MIN_RESURRECT_GOAL") ?? "
 export const MAX_RESURRECT_GOAL = Number(Deno.env.get("MAX_RESURRECT_GOAL") ?? "1000000");
 
 const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "https://2bitdeveloper.github.io";
+export const SOLANA_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
 export const CORS = {
   "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -77,6 +79,9 @@ const BLOCK_PATTERNS = [
   /https?:\/\//i, /\bwww\./i, /\.(com|io|xyz|net|org|fun|lol|gg)\b/i,
   /t\.me\//i, /@\w{3,}/, /discord\.gg/i, /[A-HJ-NP-Za-km-z1-9]{32,44}/,
 ];
+// Dependency-free profanity check: short, common-terms list with word-boundary
+// matching. Intentionally not exhaustive — the goal is to catch casual
+// obscenity on a public memorial wall, not build a comprehensive filter.
 const PROFANITY = [
   "fuck","shit","bitch","asshole","bastard","cunt","dick","piss","cock",
   "slut","whore","fag","faggot","nigger","nigga","retard","douchebag",
