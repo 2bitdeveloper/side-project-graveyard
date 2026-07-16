@@ -1,7 +1,6 @@
 // POST /functions/v1/offer
 // body: { wallet, timestamp, signature, graveId, offerTx }
 // One tx: transferChecked 95% to the grave owner + burnChecked 5% tithe.
-// Resurrection threshold is per-grave (creator-set at burial), not global.
 import {
   admin, json, CORS, verifyWallet, getParsedTx, sumBurns, tokenDelta,
   TOKEN_MINT, MIN_OFFER, TICKER,
