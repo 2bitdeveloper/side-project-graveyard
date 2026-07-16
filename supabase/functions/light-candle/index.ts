@@ -1,8 +1,5 @@
 // POST /functions/v1/light-candle
 // body: { wallet, graveId }
-// Self-contained on purpose: doesn't import the shared helpers.ts (which
-// pulls in npm:tweetnacl/bs58/supabase-js and used to pull in bad-words) —
-// this function only ever needed supabase-js and doesn't verify signatures.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "https://2bitdeveloper.github.io";
