@@ -4,7 +4,7 @@
 //            resurrectGoal?, pitch?, linkUrl?, linkLabel? } }
 import {
   admin, json, CORS, verifyWallet, ripBalance, moderationFlag, tooSoon, getParsedTx, sumBurns, validateLink,
-  HOLD_THRESHOLD, TOKEN_MINT, TICKER, CUSTOM_TOMBSTONE_BURN, MIN_RESURRECT_GOAL, MAX_RESURRECT_GOAL, DEFAULT_RESURRECT_GOAL,
+  HOLD_THRESHOLD, TOKEN_MINT, TICKER, CUSTOM_TOMBSTONE_BURN, MIN_RESURRECT_GOAL, MAX_RESURRECT_GOAL, DEFAULT_RESURRECT_GOAL, SOLANA_ADDR_RE,
 } from "../_shared/helpers.ts";
 
 const BURY_COOLDOWN_SECONDS = 60;
@@ -25,8 +25,16 @@ Deno.serve(async (req) => {
   try {
     const { wallet, timestamp, signature, grave } = await req.json();
 
-    const auth = verifyWallet("bury", wallet, timestamp, signature);
-    if (!auth.ok) return json({ error: auth.err }, 401);
+    // Pre-launch beta: no wallet connection required at all, so no signature
+    // to verify — just check the identifier is at least plausibly shaped.
+    // Once TOKEN_MINT is set, a real signed wallet is required, same as
+    // every other action that moves value or attributes permanent content.
+    if (TOKEN_MINT) {
+      const auth = verifyWallet("bury", wallet, timestamp, signature);
+      if (!auth.ok) return json({ error: auth.err }, 401);
+    } else {
+      if (!wallet || !SOLANA_ADDR_RE.test(wallet)) return json({ error: "Missing identity — refresh and try again." }, 400);
+    }
 
     const name = String(grave?.name ?? "").trim().slice(0, 40);
     const epitaph = String(grave?.epitaph ?? "").trim().slice(0, 140);
