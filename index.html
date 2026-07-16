@@ -491,10 +491,8 @@ footer .disclaimer{max-width:560px;margin:14px auto 0;color:var(--stone-dim);lin
 
 <script src="https://unpkg.com/@solana/web3.js@1.95.8/lib/index.iife.min.js"></script>
 <script>
-/* =========================================================
-   THE SIDE PROJECT GRAVEYARD — production client
-   Launch day: set CONFIG.TOKEN_MINT to the pump.fun CA and push.
-   ========================================================= */
+// The Side Project Graveyard client
+// set CONFIG.TOKEN_MINT to the pump.fun CA at launch
 
 const CONFIG = {
   SUPABASE_URL: "https://clfmffjlpxnnlbobrbjn.supabase.co",
@@ -555,10 +553,8 @@ function normalizeGrave(row){
     pitch:row.pitch||"", linkUrl:row.link_url||"", linkLabel:row.link_label||"" };
 }
 
-/* procedural filler graves — shown only once real graves run out.
-   Bucketed by category so the noun and epitaph actually match each other
-   (a "mixtape" gets a music epitaph, not a git commit joke), and pools are
-   large enough that ~96 draws rarely repeat the same line twice. */
+// filler graves shown once real graves run out, grouped by category so
+// name and epitaph match (a mixtape gets a music line, not a git joke)
 const ADJ=["untitled","final","awesome","simple","tiny","ultimate","quick","smart","lost","legacy","forgotten","half-finished","weekend","secret"];
 const SUFFIX=["-v2","-v9","-final","-FINAL2","-old","-new","-backup","-test","","",""];
 const BUCKETS=[
@@ -806,7 +802,7 @@ function registerStandardWallet(w){
     });
   }catch(e){console.warn("wallet registration skipped:",w?.name,e)}
 }
-// Wallet Standard handshake: catch wallets registering now and later
+// catches wallets that register now or later
 const wsApi={register:(...ws)=>{ws.forEach(registerStandardWallet);return()=>{}}};
 window.addEventListener("wallet-standard:register-wallet",e=>{try{e.detail(wsApi)}catch{}});
 try{window.dispatchEvent(new CustomEvent("wallet-standard:app-ready",{detail:wsApi}))}catch{}
@@ -821,9 +817,7 @@ function legacyAdapter(name,provider){
     async signAndSendTransaction(tx){ const {signature}=await provider.signAndSendTransaction(tx); return signature; },
   };
 }
-/* Read-only viewer: for pump.fun's embedded wallet, which has no signing bridge
-   to outside sites. Lets someone browse using just their public address —
-   any attempt to sign clearly explains why it can't proceed. */
+// lets someone browse with just a public address, no signing possible
 function readOnlyAdapter(address){
   const refuse=()=>{throw new Error("This is a read-only view — signing needs a real wallet like Phantom or Solflare.")};
   return{ name:"Read-only viewer", icon:null, readOnly:true,
@@ -949,11 +943,7 @@ $("readonly-confirm").addEventListener("click",()=>{
 
 /* ---------- wallet persistence: survive page refresh ---------- */
 const WALLET_KEY="graveyard:wallet";
-/* Pre-launch beta: bury and candle work without connecting a wallet at all.
-   A persistent per-browser id keeps the existing per-wallet rate limits
-   (one candle per grave per day, one burial per minute) meaningful even
-   without a real wallet. Once TOKEN_MINT is set, both actions go back to
-   requiring a real connected wallet. */
+// stand-in wallet id for pre-launch actions that don't need a real wallet
 const ANON_ID_KEY="graveyard:anonId";
 function getAnonId(){
   let id;
@@ -988,8 +978,7 @@ async function tryRestoreWallet(){
     }catch{ clearWalletPref(); }
     return;
   }
-  // named wallet: attempt a silent, trusted-only reconnect — no popup,
-  // fails quietly if the extension isn't present or trust was revoked
+  // try a silent reconnect, no popup
   sweepLegacyWallets();
   const adapter=discovered.get(saved.name);
   if(!adapter) return;
@@ -998,7 +987,7 @@ async function tryRestoreWallet(){
     state.adapter=adapter;
     $("wallet-btn").textContent="⛓ "+shortAddr(state.wallet);
     updateHoldStatus();
-  }catch{ /* not auto-trusted (yet) — leave disconnected, no error shown */ }
+  }catch{ /* not trusted yet, leave disconnected */ }
 }
 
 /* ---------- modals ---------- */
@@ -1072,8 +1061,8 @@ $("candle-btn").addEventListener("click",async()=>{
   const grave=activeGrave;
   try{
     let wallet;
-    if(CONFIG.TOKEN_MINT){ await ensureWallet(); wallet=state.wallet; } // live — a connected address is enough, no signature needed
-    else{ wallet=state.wallet||getAnonId(); } // pre-launch — no wallet required at all
+    if(CONFIG.TOKEN_MINT){ await ensureWallet(); wallet=state.wallet; } // live — no signature needed for a candle
+    else{ wallet=state.wallet||getAnonId(); } // pre-launch — no wallet needed
     const d=await callFn("light-candle",{wallet,graveId:grave.id});
     grave.candles=d.candles??grave.candles+1;
     refreshGrave(grave);loadStats();loadMourned();
@@ -1263,7 +1252,7 @@ $("bury-confirm").addEventListener("click",async()=>{
       if(state.adapter?.readOnly){toast("You're browsing read-only — connect a signing wallet to bury a project.");return}
       auth=await signedPayload("bury");
     }else{
-      auth={ wallet: state.wallet||getAnonId() }; // pre-launch beta — no wallet required at all
+      auth={ wallet: state.wallet||getAnonId() }; // pre-launch — no wallet needed
     }
 
     const gravePayload={ name, epitaph, cause:causeSel, causeText,
