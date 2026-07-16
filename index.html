@@ -207,6 +207,15 @@ main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px}
 }
 .hold-req b{color:var(--candle)}
 .err{color:var(--danger);font-size:12px;margin-top:6px;display:none}
+.visitor-counter{
+  display:inline-flex;align-items:center;gap:8px;margin-top:16px;
+  font-family:var(--mono);font-size:11px;color:var(--stone-dim);letter-spacing:.5px;
+}
+.vc-digits{
+  background:#0a0d16;border:2px solid var(--stone-dim);padding:4px 9px;
+  color:var(--candle);font-weight:700;letter-spacing:2px;
+  text-shadow:0 0 6px rgba(255,179,71,.5);
+}
 .modal input:disabled{opacity:.4;cursor:not-allowed}
 /* grave detail */
 #detail-epitaph{
@@ -487,6 +496,10 @@ footer .disclaimer{max-width:560px;margin:14px auto 0;color:var(--stone-dim);lin
   <div><span class="cashback">Cashback Coin:</span> 100% of creator fees flow back to traders — enforced by pump.fun, locked at launch, forever.</div>
   <p class="disclaimer">$GRAVE is a meme token with no promise of profit, utility beyond ritual, or life after death.
   Nothing here is financial advice. Most side projects die. Most tokens do too. Mourn responsibly.</p>
+  <div class="visitor-counter">
+    <span class="vc-label">visitors</span>
+    <span class="vc-digits" id="visitor-count">······</span>
+  </div>
 </footer>
 
 <script src="https://unpkg.com/@solana/web3.js@1.95.8/lib/index.iife.min.js"></script>
@@ -1343,8 +1356,28 @@ setInterval(spawnGhost,24000);setTimeout(spawnGhost,6000);
 if(CONFIG.TOKEN_MINT)$("ca").textContent=CONFIG.TOKEN_MINT;
 
 /* ---------- init ---------- */
+async function trackView(){
+  const SEEN_KEY="graveyard:viewCounted", CACHE_KEY="graveyard:lastViewCount";
+  let already;
+  try{ already=sessionStorage.getItem(SEEN_KEY); }catch{ already=null; }
+  if(already){
+    let cached;
+    try{ cached=sessionStorage.getItem(CACHE_KEY); }catch{ cached=null; }
+    if(cached)$("visitor-count").textContent=Number(cached).toLocaleString();
+    return;
+  }
+  try{
+    const d=await callFn("track-view",{});
+    if(d.views){
+      $("visitor-count").textContent=Number(d.views).toLocaleString();
+      try{ sessionStorage.setItem(SEEN_KEY,"1"); sessionStorage.setItem(CACHE_KEY,String(d.views)); }catch{}
+    }
+  }catch(e){ console.error("view tracking failed",e); }
+}
+
 loadStats();loadMourned();loadMoreGraves();
 tryRestoreWallet();
+trackView();
 </script>
 </body>
 </html>
