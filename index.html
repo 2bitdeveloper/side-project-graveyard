@@ -133,22 +133,39 @@ main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px}
 /* ---------- cemetery ---------- */
 #cemetery{
   display:grid;grid-template-columns:repeat(3,1fr);
-  gap:26px 24px;padding:34px 0 30px;align-items:start;
+  gap:44px 24px;padding:60px 0 70px;align-items:start;
+  perspective:1700px;perspective-origin:50% 0%;
 }
 @media(max-width:900px){#cemetery{grid-template-columns:repeat(2,1fr)}}
 .grave{
-  position:relative;text-align:left;cursor:pointer;color:inherit;
-  font-family:var(--mono);width:100%;
+  display:block;width:100%;padding:0;margin:0;border:none;background:none;
+  text-align:left;cursor:pointer;color:inherit;font-family:var(--mono);
+  position:relative;
+}
+.grave:hover{z-index:5}
+.g-inner{
+  position:relative;
   border:2px solid var(--stone-dim);
   border-radius:28px 28px 10px 10px;
   background:linear-gradient(180deg, rgba(24,29,46,.8), rgba(11,14,26,.9));
   padding:22px 18px 16px;
   display:flex;flex-direction:column;gap:2px;
   box-shadow:0 6px 18px rgba(0,0,0,.35);
-  transition:transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+  transform-style:preserve-3d;
+  transform-origin:center 88%;
+  transform:rotateX(11deg) scale(calc(1 - var(--depth,0) * 0.028)) translateY(calc(var(--depth,0) * 5px));
+  filter:brightness(calc(1 - var(--depth,0) * 0.035));
+  transition:transform .18s ease, border-color .12s ease, box-shadow .18s ease, filter .18s ease;
 }
-.grave:hover{transform:translateY(-4px);border-color:var(--candle)}
-.grave.is-risen{border-color:var(--risen);box-shadow:0 0 20px rgba(126,240,192,.22)}
+.grave:hover .g-inner{
+  transform:rotateX(0deg) scale(calc(1 - var(--depth,0) * 0.028)) translateY(calc(var(--depth,0) * 5px - 6px)) translateZ(20px);
+  border-color:var(--candle);filter:brightness(1);
+}
+@media(max-width:900px){
+  .g-inner{transform:none!important;filter:none!important}
+  .grave:hover .g-inner{transform:translateY(-4px)!important}
+}
+.grave.is-risen .g-inner{border-color:var(--risen);box-shadow:0 0 20px rgba(126,240,192,.22)}
 .g-badge{
   position:absolute;top:12px;right:12px;
   font-family:var(--px-display);font-size:7px;padding:4px 6px;letter-spacing:1px;border-radius:4px;
@@ -646,33 +663,35 @@ function graveEl(grave){
   const b=document.createElement("button");
   b.className="grave"+(grave.risen?" is-risen":"");
   b.setAttribute("aria-label","Grave of "+grave.name);
+  const inner=document.createElement("div");inner.className="g-inner";
+  b.appendChild(inner);
   if(grave.custom&&meta&&!grave.risen){
-    b.style.borderColor=meta.color;
-    b.style.boxShadow="0 0 16px "+meta.glow;
+    inner.style.borderColor=meta.color;
+    inner.style.boxShadow="0 0 16px "+meta.glow;
   }
 
-  if(grave.risen){const t=document.createElement("span");t.className="g-badge tag-risen";t.textContent="RISEN";b.appendChild(t)}
-  else if(grave.custom){const t=document.createElement("span");t.className="g-badge tag-custom";t.textContent="CUSTOM";b.appendChild(t)}
-  else if(grave.fresh){const t=document.createElement("span");t.className="g-badge tag-fresh";t.textContent="FRESH";b.appendChild(t)}
+  if(grave.risen){const t=document.createElement("span");t.className="g-badge tag-risen";t.textContent="RISEN";inner.appendChild(t)}
+  else if(grave.custom){const t=document.createElement("span");t.className="g-badge tag-custom";t.textContent="CUSTOM";inner.appendChild(t)}
+  else if(grave.fresh){const t=document.createElement("span");t.className="g-badge tag-fresh";t.textContent="FRESH";inner.appendChild(t)}
 
   const header=document.createElement("div");header.className="g-header";
   header.innerHTML='<span class="g-cross">†</span>R.I.P.';
-  b.appendChild(header);
+  inner.appendChild(header);
 
-  const nm=document.createElement("div");nm.className="g-name";nm.textContent=grave.name;b.appendChild(nm);
+  const nm=document.createElement("div");nm.className="g-name";nm.textContent=grave.name;inner.appendChild(nm);
 
-  const dates=document.createElement("div");dates.className="g-dates";dates.textContent=grave.born+" — "+grave.died;b.appendChild(dates);
+  const dates=document.createElement("div");dates.className="g-dates";dates.textContent=grave.born+" — "+grave.died;inner.appendChild(dates);
   const duration=graveDuration(grave.born,grave.died);
-  if(duration){const du=document.createElement("div");du.className="g-duration";du.textContent="("+duration+")";b.appendChild(du)}
+  if(duration){const du=document.createElement("div");du.className="g-duration";du.textContent="("+duration+")";inner.appendChild(du)}
 
-  const div=document.createElement("div");div.className="g-divider";div.innerHTML="<span>✦</span>";b.appendChild(div);
+  const div=document.createElement("div");div.className="g-divider";div.innerHTML="<span>✦</span>";inner.appendChild(div);
 
-  const causeLbl=document.createElement("div");causeLbl.className="g-label";causeLbl.textContent="Cause of Death";b.appendChild(causeLbl);
-  const cause=document.createElement("div");cause.className="g-cause";cause.textContent="“"+grave.cause+"”";b.appendChild(cause);
+  const causeLbl=document.createElement("div");causeLbl.className="g-label";causeLbl.textContent="Cause of Death";inner.appendChild(causeLbl);
+  const cause=document.createElement("div");cause.className="g-cause";cause.textContent="“"+grave.cause+"”";inner.appendChild(cause);
 
   if(grave.epitaph){
-    const lwLbl=document.createElement("div");lwLbl.className="g-label";lwLbl.style.marginTop="10px";lwLbl.textContent="Last Words";b.appendChild(lwLbl);
-    const lw=document.createElement("div");lw.className="g-lastwords";lw.textContent="“"+grave.epitaph+"”";b.appendChild(lw);
+    const lwLbl=document.createElement("div");lwLbl.className="g-label";lwLbl.style.marginTop="10px";lwLbl.textContent="Last Words";inner.appendChild(lwLbl);
+    const lw=document.createElement("div");lw.className="g-lastwords";lw.textContent="“"+grave.epitaph+"”";inner.appendChild(lw);
   }
 
   const tags=[];
@@ -686,7 +705,7 @@ function graveEl(grave){
       if(t.color){chip.style.borderColor=t.color;chip.style.color=t.color}
       row.appendChild(chip);
     });
-    b.appendChild(row);
+    inner.appendChild(row);
   }
 
   const showProgress=isReal&&!grave.community&&grave.wallet!=="the-keeper";
@@ -700,25 +719,33 @@ function graveEl(grave){
     const lbl=document.createElement("div");lbl.className="g-progress-label";
     lbl.textContent=Number(grave.offered_total||0).toLocaleString()+" / "+goal.toLocaleString()+" "+CONFIG.TICKER+(grave.risen?" — RISEN":"");
     wrap.appendChild(lbl);
-    b.appendChild(wrap);
+    inner.appendChild(wrap);
   }
 
   const footer=document.createElement("div");footer.className="g-footer";
   const candles=document.createElement("span");candles.textContent="🕯 "+(grave.candles||0);footer.appendChild(candles);
   if(grave.eternal>0){const fl=document.createElement("span");fl.textContent="🔥 "+grave.eternal;footer.appendChild(fl)}
-  b.appendChild(footer);
+  inner.appendChild(footer);
 
   grave._el=b;
   b.addEventListener("click",()=>openDetail(grave));
   return b;
 }
+function renumberDepth(){
+  [...cemeteryEl.children].forEach((el,i)=>{
+    el.style.setProperty("--depth", Math.min(Math.floor(i/3), 14));
+  });
+}
 function addGrave(grave,front){
   state.graves.push(grave);
   const el=graveEl(grave);
   front? cemeteryEl.prepend(el) : cemeteryEl.appendChild(el);
+  renumberDepth();
 }
 function refreshGrave(grave){
+  const depth=grave._el?.style.getPropertyValue("--depth");
   const fresh=graveEl(grave);
+  if(depth)fresh.style.setProperty("--depth",depth);
   grave._el&&grave._el.replaceWith(fresh);
 }
 
