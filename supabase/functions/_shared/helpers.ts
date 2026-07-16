@@ -1,6 +1,3 @@
-// Shared helpers v7 — dependency-free profanity filter (removes npm:bad-words,
-// which appears to have Deno edge-runtime compatibility issues that crashed
-// the function at cold start — every request, including OPTIONS, 503'd).
 import nacl from "npm:tweetnacl@1.0.3";
 import bs58 from "npm:bs58@5.0.0";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -79,9 +76,6 @@ const BLOCK_PATTERNS = [
   /https?:\/\//i, /\bwww\./i, /\.(com|io|xyz|net|org|fun|lol|gg)\b/i,
   /t\.me\//i, /@\w{3,}/, /discord\.gg/i, /[A-HJ-NP-Za-km-z1-9]{32,44}/,
 ];
-// Dependency-free profanity check: short, common-terms list with word-boundary
-// matching. Intentionally not exhaustive — the goal is to catch casual
-// obscenity on a public memorial wall, not build a comprehensive filter.
 const PROFANITY = [
   "fuck","shit","bitch","asshole","bastard","cunt","dick","piss","cock",
   "slut","whore","fag","faggot","nigger","nigga","retard","douchebag",
