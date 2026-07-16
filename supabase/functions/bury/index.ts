@@ -25,10 +25,6 @@ Deno.serve(async (req) => {
   try {
     const { wallet, timestamp, signature, grave } = await req.json();
 
-    // Pre-launch beta: no wallet connection required at all, so no signature
-    // to verify — just check the identifier is at least plausibly shaped.
-    // Once TOKEN_MINT is set, a real signed wallet is required, same as
-    // every other action that moves value or attributes permanent content.
     if (TOKEN_MINT) {
       const auth = verifyWallet("bury", wallet, timestamp, signature);
       if (!auth.ok) return json({ error: auth.err }, 401);
