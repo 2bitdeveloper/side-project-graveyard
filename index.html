@@ -949,6 +949,22 @@ $("readonly-confirm").addEventListener("click",()=>{
 
 /* ---------- wallet persistence: survive page refresh ---------- */
 const WALLET_KEY="graveyard:wallet";
+/* Pre-launch beta: bury and candle work without connecting a wallet at all.
+   A persistent per-browser id keeps the existing per-wallet rate limits
+   (one candle per grave per day, one burial per minute) meaningful even
+   without a real wallet. Once TOKEN_MINT is set, both actions go back to
+   requiring a real connected wallet. */
+const ANON_ID_KEY="graveyard:anonId";
+function getAnonId(){
+  let id;
+  try{ id=localStorage.getItem(ANON_ID_KEY); }catch{}
+  if(!id){
+    const chars="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    id="";for(let i=0;i<40;i++)id+=chars[Math.floor(Math.random()*chars.length)];
+    try{ localStorage.setItem(ANON_ID_KEY,id); }catch{}
+  }
+  return id;
+}
 function saveWalletPref(adapter){
   try{
     if(adapter.readOnly) localStorage.setItem(WALLET_KEY, JSON.stringify({type:"readonly", address:state.wallet}));
@@ -1055,8 +1071,10 @@ $("candle-btn").addEventListener("click",async()=>{
   if(!activeGrave?.id)return;
   const grave=activeGrave;
   try{
-    await ensureWallet(); // candles are free — a connected address is enough, no signature needed
-    const d=await callFn("light-candle",{wallet:state.wallet,graveId:grave.id});
+    let wallet;
+    if(CONFIG.TOKEN_MINT){ await ensureWallet(); wallet=state.wallet; } // live — a connected address is enough, no signature needed
+    else{ wallet=state.wallet||getAnonId(); } // pre-launch — no wallet required at all
+    const d=await callFn("light-candle",{wallet,graveId:grave.id});
     grave.candles=d.candles??grave.candles+1;
     refreshGrave(grave);loadStats();loadMourned();
     toast("A candle flickers for "+grave.name+".");
@@ -1222,7 +1240,7 @@ document.querySelectorAll('input[name="tomb-tier"]').forEach(r=>r.addEventListen
 
 function updateHoldStatus(){
   if(!CONFIG.TOKEN_MINT){
-    $("hold-req").innerHTML="Pre-launch: burials are free. Once <b>$GRAVE</b> is live, burial rites require holding <b>"+CONFIG.HOLD_THRESHOLD.toLocaleString()+" $GRAVE</b>.";
+    $("hold-req").innerHTML="Pre-launch beta: burials are free and <b>no wallet connection is required</b>. Once <b>$GRAVE</b> is live, burial rites require holding <b>"+CONFIG.HOLD_THRESHOLD.toLocaleString()+" $GRAVE</b>.";
     return;
   }
   $("hold-req").innerHTML="Burial rites require holding <b>"+CONFIG.HOLD_THRESHOLD.toLocaleString()+" $GRAVE</b>. <span id='hold-status'>"+
@@ -1239,8 +1257,14 @@ $("bury-confirm").addEventListener("click",async()=>{
   if(causeSel===CUSTOM_CAUSE_SENTINEL&&!causeText){toast("Tell us how it really died.");return}
   const wantsCustomTomb=document.querySelector('input[name="tomb-tier"]:checked').value==="custom";
   try{
-    await ensureWallet();
-    if(state.adapter?.readOnly){toast("You're browsing read-only — connect a signing wallet to bury a project.");return}
+    let auth;
+    if(CONFIG.TOKEN_MINT){
+      await ensureWallet();
+      if(state.adapter?.readOnly){toast("You're browsing read-only — connect a signing wallet to bury a project.");return}
+      auth=await signedPayload("bury");
+    }else{
+      auth={ wallet: state.wallet||getAnonId() }; // pre-launch beta — no wallet required at all
+    }
 
     const gravePayload={ name, epitaph, cause:causeSel, causeText,
       born:$("f-born").value.trim()||"20??",
@@ -1273,7 +1297,7 @@ $("bury-confirm").addEventListener("click",async()=>{
       toast("Burn confirmed. Carving the stone…");
     }
 
-    const d=await callFn("bury",{ ...(await signedPayload("bury")), grave:gravePayload });
+    const d=await callFn("bury",{ ...auth, grave:gravePayload });
     const grave=normalizeGrave(d.grave);grave.fresh=true;
     addGrave(grave,true);
     loadStats();
