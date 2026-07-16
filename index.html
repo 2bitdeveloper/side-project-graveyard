@@ -737,6 +737,7 @@ async function loadStats(){
     $("stat-candles").textContent=(s.candles??0).toLocaleString();
     $("stat-risen").textContent=(s.risen??0).toLocaleString();
     $("stat-burned").textContent=Number(s.burned_total??0).toLocaleString();
+    $("visitor-count").textContent=Number(s.page_views??0).toLocaleString();
   }catch(e){console.error("stats load failed",e)}
 }
 async function loadMourned(){
@@ -1363,21 +1364,14 @@ if(CONFIG.TOKEN_MINT)$("ca").textContent=CONFIG.TOKEN_MINT;
 
 /* ---------- init ---------- */
 async function trackView(){
-  const SEEN_KEY="graveyard:viewCounted", CACHE_KEY="graveyard:lastViewCount";
+  const SEEN_KEY="graveyard:viewCounted";
   let already;
   try{ already=sessionStorage.getItem(SEEN_KEY); }catch{ already=null; }
-  if(already){
-    let cached;
-    try{ cached=sessionStorage.getItem(CACHE_KEY); }catch{ cached=null; }
-    if(cached)$("visitor-count").textContent=Number(cached).toLocaleString();
-    return;
-  }
+  if(already)return;
   try{
-    const d=await callFn("track-view",{});
-    if(d.views){
-      $("visitor-count").textContent=Number(d.views).toLocaleString();
-      try{ sessionStorage.setItem(SEEN_KEY,"1"); sessionStorage.setItem(CACHE_KEY,String(d.views)); }catch{}
-    }
+    await callFn("track-view",{});
+    try{ sessionStorage.setItem(SEEN_KEY,"1"); }catch{}
+    loadStats(); // refresh the displayed count to include this visit
   }catch(e){ console.error("view tracking failed",e); }
 }
 
