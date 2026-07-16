@@ -121,3 +121,6 @@ end $$;
 revoke execute on function public.increment_page_views() from anon, authenticated, public;
 
 alter table public.site_stats enable row level security;
+
+alter table public.site_stats enable row level security;
+create policy "site_stats are public reading" on public.site_stats for select using (true);
