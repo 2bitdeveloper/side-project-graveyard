@@ -115,3 +115,24 @@ when the mint address lands in the two places below.
   read-only viewer restores the saved address directly. Added a working
   "disconnect" option in the wallet picker (previously unreachable when no
   browser-extension wallet was detected — exactly the read-only scenario).
+
+## Bug fixes (this pass, part 3) — pre-launch beta friction removal
+- Bury and candle no longer require connecting a wallet at all while
+  TOKEN_MINT is unset. A persistent per-browser anonymous id (stored in
+  localStorage) stands in for a wallet address, so the existing per-wallet
+  rate limits (one candle per grave per day, one burial per minute) still
+  mean something even without a real wallet.
+- Server-side: `bury`'s signature verification is now conditional on
+  TOKEN_MINT, matching what the client already enforced client-side —
+  required once live, skipped (format-checked only) pre-launch. This closes
+  the gap where a client could previously bypass its own UI gating by
+  calling the function directly.
+- Resurrection (offerings) and eternal flames were already correctly locked
+  pre-launch from the previous pass — no changes needed there.
+- Known tradeoff: graves buried anonymously pre-launch carry a fake wallet
+  address permanently. Once $GRAVE goes live, offerings sent to these graves
+  will fail ("no transfer to the creator found") since nobody actually owns
+  that address — there's no real creator wallet to pay. Not fixed in this
+  pass; worth a "claim your grave" flow later if it matters, since anyone
+  who wants their buried project to be resurrectable post-launch should
+  connect a real wallet before burying, even during beta.
