@@ -153,15 +153,19 @@ main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px}
   box-shadow:0 6px 18px rgba(0,0,0,.35);
   transform-style:preserve-3d;
   transform-origin:center 88%;
-  transform:rotateX(11deg) scale(calc(1 - var(--depth,0) * 0.028)) translateY(calc(var(--depth,0) * 5px));
-  filter:brightness(calc(1 - var(--depth,0) * 0.035));
-  transition:transform .18s ease, border-color .12s ease, box-shadow .18s ease, filter .18s ease;
+  transform:
+    rotateX(calc(var(--dt,0) * 16deg))
+    translateZ(calc(abs(var(--dt,0)) * -70px))
+    scale(calc(1 - abs(var(--dt,0)) * 0.16));
+  filter:brightness(calc(1 - abs(var(--dt,0)) * 0.32));
+  transition:border-color .12s ease, box-shadow .12s ease;
+  will-change:transform;
 }
 .grave:hover .g-inner{
-  transform:rotateX(0deg) scale(calc(1 - var(--depth,0) * 0.028)) translateY(calc(var(--depth,0) * 5px - 6px)) translateZ(20px);
+  transform:rotateX(0deg) translateZ(20px) scale(calc(1 - abs(var(--dt,0)) * 0.16));
   border-color:var(--candle);filter:brightness(1);
 }
-@media(max-width:900px){
+@media(max-width:900px),(prefers-reduced-motion:reduce){
   .g-inner{transform:none!important;filter:none!important}
   .grave:hover .g-inner{transform:translateY(-4px)!important}
 }
@@ -731,23 +735,56 @@ function graveEl(grave){
   b.addEventListener("click",()=>openDetail(grave));
   return b;
 }
-function renumberDepth(){
-  [...cemeteryEl.children].forEach((el,i)=>{
-    el.style.setProperty("--depth", Math.min(Math.floor(i/3), 14));
-  });
-}
 function addGrave(grave,front){
   state.graves.push(grave);
   const el=graveEl(grave);
   front? cemeteryEl.prepend(el) : cemeteryEl.appendChild(el);
-  renumberDepth();
+  scrollDepth.watch(el);
 }
 function refreshGrave(grave){
-  const depth=grave._el?.style.getPropertyValue("--depth");
   const fresh=graveEl(grave);
-  if(depth)fresh.style.setProperty("--depth",depth);
   grave._el&&grave._el.replaceWith(fresh);
+  scrollDepth.watch(fresh);
 }
+
+/* ---------- scroll-driven Z depth ----------
+   Cards near the vertical center of the viewport sit close and face the
+   camera; cards near the top or bottom edge tilt away, shrink, and dim —
+   like walking down rows of headstones rather than a fixed illustration.
+   Only cards near the viewport (tracked via IntersectionObserver) get
+   their transform recalculated on scroll, so this stays cheap even with
+   a hundred graves on the page. */
+const scrollDepth=(()=>{
+  const reduceMotion=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const active=new Set();
+  let ticking=false;
+  function isDesktop(){ return matchMedia("(min-width: 901px)").matches; }
+  function update(){
+    ticking=false;
+    if(!isDesktop())return;
+    const vh=window.innerHeight, center=vh/2;
+    active.forEach(el=>{
+      const r=el.getBoundingClientRect();
+      const cardCenter=r.top+r.height/2;
+      let t=(cardCenter-center)/center;
+      t=Math.max(-1,Math.min(1,t));
+      el.style.setProperty("--dt",t.toFixed(3));
+    });
+  }
+  function requestUpdate(){ if(!ticking){ ticking=true; requestAnimationFrame(update); } }
+  const io=(reduceMotion||!isDesktop())?null:new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting)active.add(entry.target);
+      else active.delete(entry.target);
+    });
+    requestUpdate();
+  },{rootMargin:"50% 0px 50% 0px"});
+  if(io){
+    window.addEventListener("scroll",requestUpdate,{passive:true});
+    window.addEventListener("resize",requestUpdate);
+  }
+  return{ watch(el){ if(io)io.observe(el); } };
+})();
 
 /* ---------- data loading ---------- */
 async function loadStats(){
